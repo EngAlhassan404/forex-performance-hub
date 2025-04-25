@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,8 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { CURRENCY_PAIRS, STRATEGIES, TRADE_TAGS } from '@/lib/constants';
+import { STRATEGIES, TRADE_TAGS } from '@/lib/constants';
+import CurrencyPairSelect from './CurrencyPairSelect';  // New import
 
 const TradeForm = () => {
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
@@ -36,20 +36,10 @@ const TradeForm = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column */}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="pair">Currency Pair</Label>
-              <Select>
-                <SelectTrigger id="pair">
-                  <SelectValue placeholder="Select currency pair" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCY_PAIRS.map((pair) => (
-                    <SelectItem key={pair} value={pair}>{pair}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CurrencyPairSelect />  {/* Replace existing Select with new component */}
             </div>
 
             <div className="space-y-2">
