@@ -5,7 +5,8 @@ import {
   Bar, 
   XAxis, 
   YAxis, 
-  Tooltip
+  Tooltip,
+  Cell
 } from 'recharts';
 import { dummyPairPerformance } from '@/lib/dummyData';
 
@@ -44,10 +45,17 @@ const PairPerformance = () => {
           />
           <Bar 
             dataKey="totalProfit" 
-            fill={(data) => data.totalProfit >= 0 ? '#4CAF50' : '#F44336'} 
+            fill="#4CAF50" 
             radius={[4, 4, 4, 4]}
             maxBarSize={15}
-          />
+          >
+            {sortedData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.totalProfit >= 0 ? '#4CAF50' : '#F44336'} 
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

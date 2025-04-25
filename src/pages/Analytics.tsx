@@ -110,7 +110,14 @@ const Analytics = () => {
                             <XAxis dataKey="day" axisLine={false} tickLine={false} />
                             <YAxis axisLine={false} tickLine={false} />
                             <Tooltip />
-                            <Bar dataKey="profit" fill={(data) => (data.profit >= 0 ? '#4CAF50' : '#F44336')} radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="profit" fill="#4CAF50" radius={[4, 4, 0, 0]}>
+                              {dayOfWeekData.map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={entry.profit >= 0 ? '#4CAF50' : '#F44336'} 
+                                />
+                              ))}
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -203,7 +210,21 @@ const Analytics = () => {
                         <XAxis dataKey="hour" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="profit" fill={(data) => (data.profit >= 0 ? '#4CAF50' : '#F44336')} />
+                        <Bar dataKey="profit" fill="#4CAF50">
+                          {[
+                            { hour: '00:00-04:00', profit: 120, trades: 5 },
+                            { hour: '04:00-08:00', profit: 180, trades: 8 },
+                            { hour: '08:00-12:00', profit: -50, trades: 12 },
+                            { hour: '12:00-16:00', profit: 95, trades: 15 },
+                            { hour: '16:00-20:00', profit: 200, trades: 10 },
+                            { hour: '20:00-24:00', profit: -30, trades: 6 },
+                          ].map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.profit >= 0 ? '#4CAF50' : '#F44336'} 
+                            />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
