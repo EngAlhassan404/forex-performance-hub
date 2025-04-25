@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,15 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Forex trading specific colors
+				forex: {
+					primary: "#0A2647", // Dark blue for primary elements
+					secondary: "#144272", // Medium blue for secondary elements
+					accent: "#2C74B3", // Teal accent for highlights
+					profit: "#4CAF50", // Green for profits
+					loss: "#F44336", // Red for losses
+					neutral: "#757575", // Gray for neutral elements 
 				}
 			},
 			borderRadius: {
