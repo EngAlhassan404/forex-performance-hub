@@ -1,4 +1,3 @@
-
 import { Trade, PerformanceMetric, DailyPerformance, PairPerformance, TradeDistribution } from './types';
 
 export const dummyTrades: Trade[] = [
@@ -21,7 +20,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Strong trend continuation with price breaking above resistance',
     tags: ['Good Setup', 'Technical'],
     strategy: 'Trend Following',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'LONDON',
+    capitalGrowth: 220,
+    riskPercentage: 1.5
   },
   {
     id: '2',
@@ -42,7 +44,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Bearish engulfing pattern at resistance level',
     tags: ['Technical', 'Good Setup'],
     strategy: 'Price Action',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'LONDON',
+    capitalGrowth: 105,
+    riskPercentage: 1.5
   },
   {
     id: '3',
@@ -63,7 +68,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Failed breakout, market reversed quickly after entry',
     tags: ['Bad Entry', 'Choppy Market'],
     strategy: 'Breakout',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'TOKYO',
+    capitalGrowth: -80,
+    riskPercentage: 1.5
   },
   {
     id: '4',
@@ -84,7 +92,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Reversal at major resistance with bearish divergence',
     tags: ['Technical', 'Strong Trend'],
     strategy: 'Mean Reversion',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'LONDON',
+    capitalGrowth: 200,
+    riskPercentage: 1.5
   },
   {
     id: '5',
@@ -105,7 +116,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Support bounce with bullish candlestick pattern',
     tags: ['Technical', 'Good Setup'],
     strategy: 'Swing Trading',
-    status: 'OPEN'
+    status: 'OPEN',
+    session: 'SYDNEY',
+    capitalGrowth: null,
+    riskPercentage: 1.5
   },
   {
     id: '6',
@@ -126,7 +140,10 @@ export const dummyTrades: Trade[] = [
     notes: 'News event caused unexpected spike',
     tags: ['News Event', 'Bad Entry'],
     strategy: 'News Trading',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'NEW_YORK',
+    capitalGrowth: -100,
+    riskPercentage: 1.5
   },
   {
     id: '7',
@@ -147,7 +164,10 @@ export const dummyTrades: Trade[] = [
     notes: 'Strong momentum after breaking resistance',
     tags: ['Technical', 'Good Setup', 'Strong Trend'],
     strategy: 'Breakout',
-    status: 'CLOSED'
+    status: 'CLOSED',
+    session: 'LONDON',
+    capitalGrowth: 85,
+    riskPercentage: 1.5
   },
   {
     id: '8',
@@ -168,9 +188,17 @@ export const dummyTrades: Trade[] = [
     notes: 'Trading at key resistance level with bearish divergence',
     tags: ['Technical'],
     strategy: 'Mean Reversion',
-    status: 'OPEN'
+    status: 'OPEN',
+    session: 'SYDNEY',
+    capitalGrowth: null,
+    riskPercentage: 1.5
   }
-];
+].map(trade => ({
+  ...trade,
+  session: trade.session || 'NEW_YORK', // default if not specified
+  capitalGrowth: trade.capitalGrowth ?? (trade.profit || 0),
+  riskPercentage: trade.riskPercentage ?? Math.round(Math.random() * 3 + 1) // random between 1-4
+}));
 
 export const dummyMetrics: PerformanceMetric[] = [
   { name: 'Total Profit', value: '$430', change: 12.5, isPositive: true },
