@@ -196,7 +196,8 @@ export const dummyTrades: Trade[] = [
   }
 ].map(trade => ({
   ...trade,
-  type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL', // Type assertion
+  type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL', // Type assertion for type
+  status: trade.status as 'CLOSED' | 'OPEN', // Type assertion for status
   session: trade.session || 'NEW_YORK', // default if not specified
   capitalGrowth: trade.capitalGrowth ?? (trade.profit || 0),
   riskPercentage: trade.riskPercentage ?? Math.round(Math.random() * 3 + 1) // random between 1-4
