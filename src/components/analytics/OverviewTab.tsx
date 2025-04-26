@@ -17,6 +17,7 @@ import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
 import SessionAnalysis from '@/components/analytics/SessionAnalysis';
 import PerformanceMetrics from '@/components/analytics/PerformanceMetrics';
+import { Trade } from '@/lib/types';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -27,10 +28,72 @@ import {
   CartesianGrid,
   Cell
 } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 const OverviewTab = () => {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [selectedTimePeriod, setSelectedTimePeriod] = useState('1M');
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  
+  // Fetch trades from Supabase
+  React.useEffect(() => {
+    const fetchTrades = async () => {
+      setIsLoading(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('trades')
+          .select('*')
+          .order('entry_date', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Map Supabase data to our Trade type
+          const mappedTrades: Trade[] = data.map(trade => ({
+            id: trade.id,
+            pair: trade.pair,
+            type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL',
+            entryDate: trade.entry_date,
+            entryPrice: trade.entry_price,
+            exitDate: trade.exit_date,
+            exitPrice: trade.exit_price,
+            stopLoss: trade.stop_loss,
+            takeProfit: trade.take_profit,
+            lotSize: trade.lot_size,
+            commission: trade.commission,
+            swap: trade.swap,
+            profit: trade.profit,
+            pips: trade.pips,
+            riskRewardRatio: trade.risk_reward_ratio,
+            notes: trade.notes || '',
+            tags: trade.tags || [],
+            strategy: trade.strategy || '',
+            status: trade.status as 'OPEN' | 'CLOSED',
+            session: trade.session as any || null,
+            capitalGrowth: trade.capital_growth,
+            riskPercentage: trade.risk_percentage
+          }));
+          setTrades(mappedTrades);
+        }
+      } catch (error: any) {
+        console.error('Error fetching trades:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading trades",
+          description: error.message || "Failed to load your trades"
+        });
+        setTrades([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTrades();
+  }, [toast]);
   
   // Format data for day of week chart
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -84,7 +147,7 @@ const OverviewTab = () => {
               <CardTitle className="text-lg">Equity Curve</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <EquityCurve />
+              <EquityCurve trades={trades} />
             </CardContent>
           </Card>
         </div>
@@ -94,7 +157,7 @@ const OverviewTab = () => {
               <CardTitle className="text-lg">Win Rate</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <WinRateChart />
+              <WinRateChart trades={trades} />
             </CardContent>
           </Card>
         </div>
@@ -107,7 +170,7 @@ const OverviewTab = () => {
               <CardTitle className="text-lg">Pairs Performance</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <PairPerformance />
+              <PairPerformance trades={trades} />
             </CardContent>
           </Card>
         </div>
@@ -145,7 +208,7 @@ const OverviewTab = () => {
             <CardTitle className="text-lg">Trading Session Analysis</CardTitle>
           </CardHeader>
           <CardContent>
-            <SessionAnalysis trades={dummyTrades} />
+            <SessionAnalysis trades={trades} />
           </CardContent>
         </Card>
       </div>

@@ -1,221 +1,145 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid,
-  Cell,
-  Legend,
-  PieChart,
-  Pie
-} from 'recharts';
-import { Trade, TradingSession, SessionPerformance } from '@/lib/types';
-import { sessionTimes, getSessionDescription } from '@/lib/sessionData';
+import React, { useMemo } from 'react';
+import { Card } from '@/components/ui/card';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell } from 'recharts';
+import { Trade, TradingSession } from '@/lib/types';
 
 interface SessionAnalysisProps {
   trades: Trade[];
 }
 
+// Display names for trading sessions
+const sessionDisplayNames: Record<TradingSession, string> = {
+  'TOKYO': 'Tokyo',
+  'SYDNEY': 'Sydney',
+  'LONDON': 'London',
+  'NEW_YORK': 'New York',
+  'TOKYO_LONDON': 'Tokyo-London',
+  'LONDON_NEW_YORK': 'London-NY',
+  'SYDNEY_TOKYO': 'Sydney-Tokyo',
+  'NEW_YORK_SYDNEY': 'NY-Sydney',
+  'NEUTRAL': 'No Session'
+};
+
 const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
-  // Filter closed trades
-  const closedTrades = trades.filter(trade => trade.status === 'CLOSED');
-  
-  // Group trades by session
-  const sessionMap = new Map<TradingSession, {
-    trades: Trade[],
-    profit: number,
-    count: number,
-    wins: number
-  }>();
-  
-  // Initialize session data
-  sessionTimes.forEach(session => {
-    sessionMap.set(session.name, {
-      trades: [],
-      profit: 0,
-      count: 0,
-      wins: 0
+  // Calculate session performance statistics
+  const sessionStats = useMemo(() => {
+    if (!trades || trades.length === 0) return [];
+    
+    // Create map for each session
+    const sessionMap = new Map<string, { wins: number; losses: number; totalProfit: number }>();
+    
+    // Initialize with all sessions
+    Object.keys(sessionDisplayNames).forEach(session => {
+      sessionMap.set(session, { wins: 0, losses: 0, totalProfit: 0 });
     });
-  });
-  
-  // Populate session data
-  closedTrades.forEach(trade => {
-    if (trade.session) {
-      const sessionData = sessionMap.get(trade.session) || {
-        trades: [],
-        profit: 0,
-        count: 0,
-        wins: 0
-      };
+    
+    // Process trades
+    trades.filter(trade => trade.status === 'CLOSED' && trade.session).forEach(trade => {
+      const session = trade.session || 'NEUTRAL';
+      const isWin = (trade.profit || 0) > 0;
       
-      sessionData.trades.push(trade);
-      sessionData.profit += trade.profit || 0;
-      sessionData.count += 1;
-      if ((trade.profit || 0) > 0) {
-        sessionData.wins += 1;
+      const stats = sessionMap.get(session)!;
+      
+      if (isWin) {
+        stats.wins += 1;
+      } else {
+        stats.losses += 1;
       }
       
-      sessionMap.set(trade.session, sessionData);
-    }
-  });
-  
-  // Convert to array for charts
-  const sessionData = Array.from(sessionMap.entries()).map(([session, data]) => ({
-    name: sessionTimes.find(s => s.name === session)?.displayName || session,
-    profit: data.profit,
-    count: data.count,
-    winRate: data.count > 0 ? (data.wins / data.count * 100).toFixed(1) : '0',
-    session
-  }));
-  
-  // Filter out empty sessions
-  const activeSessionData = sessionData.filter(s => s.count > 0);
-  
-  // Sort by profit for bar chart
-  const sortedByProfit = [...activeSessionData].sort((a, b) => b.profit - a.profit);
-  
-  // Calculate trade distribution for pie chart
-  const tradeDistribution = activeSessionData.map(s => ({
-    name: s.name,
-    value: s.count,
-    displayName: `${s.name} (${getSessionDescription(s.session as TradingSession).split('(')[1].split(')')[0]})`
-  }));
-  
-  // Colors for charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#a4de6c', '#d0ed57'];
+      stats.totalProfit += (trade.profit || 0);
+    });
+    
+    // Convert map to array and filter out sessions with no trades
+    return Array.from(sessionMap.entries())
+      .map(([session, stats]) => ({
+        session: sessionDisplayNames[session as TradingSession] || session,
+        originalSession: session,
+        totalProfit: stats.totalProfit,
+        winRate: stats.wins + stats.losses > 0 ? 
+          (stats.wins / (stats.wins + stats.losses)) * 100 : 0,
+        tradesCount: stats.wins + stats.losses
+      }))
+      .filter(item => item.tradesCount > 0)
+      .sort((a, b) => b.totalProfit - a.totalProfit);
+  }, [trades]);
+
+  if (sessionStats.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center">
+        <p className="text-muted-foreground">No session data available. Add trades with session information to see analysis.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Session Profit Performance</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={sortedByProfit}
-                layout="vertical"
-                margin={{ top: 10, right: 30, left: 50, bottom: 10 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.2} />
-                <XAxis 
-                  type="number"
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(value) => `$${value}`}
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={sessionStats}
+            margin={{ top: 10, right: 30, left: 10, bottom: 40 }}
+          >
+            <XAxis 
+              dataKey="session"
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis 
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `$${value}`}
+            />
+            <Tooltip 
+              formatter={(value: any) => [`$${value}`, 'Profit']}
+              contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0' }}
+            />
+            <Legend />
+            <Bar 
+              name="Total Profit" 
+              dataKey="totalProfit" 
+              radius={[4, 4, 0, 0]}
+            >
+              {sessionStats.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.totalProfit >= 0 ? '#4CAF50' : '#F44336'} 
                 />
-                <YAxis 
-                  dataKey="name"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  width={80}
-                />
-                <Tooltip 
-                  formatter={(value: number) => [`$${value}`, 'Profit']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                  labelFormatter={(label) => {
-                    const session = sortedByProfit.find(s => s.name === label)?.session as TradingSession;
-                    return getSessionDescription(session);
-                  }}
-                />
-                <Bar dataKey="profit" radius={[4, 4, 4, 4]} barSize={20}>
-                  {sortedByProfit.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.profit >= 0 ? '#4CAF50' : '#F44336'} 
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Session Win Rate</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={activeSessionData}
-                margin={{ top: 10, right: 30, left: 20, bottom: 40 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                <XAxis 
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip 
-                  formatter={(value: number) => [`${value}%`, 'Win Rate']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                  labelFormatter={(label) => {
-                    const session = activeSessionData.find(s => s.name === label)?.session as TradingSession;
-                    return getSessionDescription(session);
-                  }}
-                />
-                <Bar 
-                  dataKey="winRate" 
-                  fill="#2C74B3" 
-                  radius={[4, 4, 0, 0]} 
-                  name="Win Rate"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Trade Distribution by Session</CardTitle>
-        </CardHeader>
-        <CardContent className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={tradeDistribution}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              >
-                {tradeDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value: number) => [`${value} trades`, 'Count']}
-                labelFormatter={(label, entry) => {
-                  const dataEntry = tradeDistribution.find(item => item.name === label);
-                  return dataEntry?.displayName || label;
-                }}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+
+      <div className="overflow-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left p-2 text-sm font-medium">Session</th>
+              <th className="text-center p-2 text-sm font-medium">Trades</th>
+              <th className="text-center p-2 text-sm font-medium">Win Rate</th>
+              <th className="text-right p-2 text-sm font-medium">Profit/Loss</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessionStats.map((stat) => (
+              <tr key={stat.originalSession} className="border-b">
+                <td className="p-2 text-sm">{stat.session}</td>
+                <td className="p-2 text-sm text-center">{stat.tradesCount}</td>
+                <td className="p-2 text-sm text-center">{stat.winRate.toFixed(1)}%</td>
+                <td className={`p-2 text-sm text-right ${
+                  stat.totalProfit >= 0 ? 'text-forex-profit' : 'text-forex-loss'
+                }`}>
+                  ${stat.totalProfit.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
