@@ -1,3 +1,4 @@
+
 import { Trade, PerformanceMetric, DailyPerformance, PairPerformance, TradeDistribution } from './types';
 
 export const dummyTrades: Trade[] = [
@@ -195,6 +196,7 @@ export const dummyTrades: Trade[] = [
   }
 ].map(trade => ({
   ...trade,
+  type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL', // Type assertion
   session: trade.session || 'NEW_YORK', // default if not specified
   capitalGrowth: trade.capitalGrowth ?? (trade.profit || 0),
   riskPercentage: trade.riskPercentage ?? Math.round(Math.random() * 3 + 1) // random between 1-4
