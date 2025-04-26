@@ -1,4 +1,3 @@
-
 // Trade types
 export interface Trade {
   id: string;
@@ -33,7 +32,8 @@ export type TradingSession =
   | 'TOKYO_LONDON' 
   | 'LONDON_NEW_YORK' 
   | 'SYDNEY_TOKYO' 
-  | 'NEW_YORK_SYDNEY';
+  | 'NEW_YORK_SYDNEY'
+  | 'NEUTRAL';
 
 // Performance metric types
 export interface PerformanceMetric {
@@ -77,6 +77,15 @@ export interface User {
   id: string;
   username: string;
   role: 'ADMIN' | 'USER';
+}
+
+// Extended trading session definition with time information
+export interface SessionTime {
+  name: TradingSession;
+  displayName: string;
+  startTimeGMT: string; // Format: "HH:MM"
+  endTimeGMT: string;   // Format: "HH:MM"
+  description?: string;
 }
 
 // Session analysis

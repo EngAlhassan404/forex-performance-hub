@@ -1,19 +1,90 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import TradeTable from '@/components/trades/TradeTable';
 import TradeForm from '@/components/trades/TradeForm';
-import { dummyTrades } from '@/lib/dummyData';
+import { supabase } from '@/integrations/supabase/client';
+import { Trade } from '@/lib/types';
+import { useToast } from '@/components/ui/use-toast';
+import { useTradingSessions } from '@/hooks/use-trading-sessions';
+import { Badge } from '@/components/ui/badge';
 
 const TradeLog = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('trades');
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { activeSessions, getSessionDescription } = useTradingSessions();
+  const { toast } = useToast();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+  
+  // Fetch trades from Supabase
+  useEffect(() => {
+    const fetchTrades = async () => {
+      setIsLoading(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('trades')
+          .select('*')
+          .order('entryDate', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (data) {
+          setTrades(data as Trade[]);
+        }
+      } catch (error: any) {
+        console.error('Error fetching trades:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading trades",
+          description: error.message || "Failed to load your trades"
+        });
+        // Fall back to dummy data if there's an error or if the table doesn't exist yet
+        import('@/lib/dummyData').then(({ dummyTrades }) => {
+          setTrades(dummyTrades);
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTrades();
+  }, [toast]);
+  
+  // Subscribe to real-time updates for trades
+  useEffect(() => {
+    const tradesSubscription = supabase
+      .channel('trades-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'trades' }, 
+        (payload) => {
+          // Handle different events
+          if (payload.eventType === 'INSERT') {
+            setTrades(prev => [payload.new as Trade, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTrades(prev => 
+              prev.map(trade => trade.id === payload.new.id ? payload.new as Trade : trade)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setTrades(prev => 
+              prev.filter(trade => trade.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      void supabase.removeChannel(tradesSubscription);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-forex-primary/20">
@@ -26,6 +97,17 @@ const TradeLog = () => {
               <h1 className="text-2xl font-bold">Trade Log</h1>
               <p className="text-muted-foreground">View and manage your trading journal</p>
             </div>
+            
+            {activeSessions.length > 0 && activeSessions[0] !== 'NEUTRAL' && (
+              <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
+                <p className="text-sm text-muted-foreground mr-2">Active sessions:</p>
+                {activeSessions.map(session => (
+                  <Badge key={session} variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    {getSessionDescription(session)}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -34,7 +116,11 @@ const TradeLog = () => {
               <TabsTrigger value="add">Add New Trade</TabsTrigger>
             </TabsList>
             <TabsContent value="trades">
-              <TradeTable data={dummyTrades} />
+              {isLoading ? (
+                <div className="text-center p-8">Loading trades...</div>
+              ) : (
+                <TradeTable data={trades} />
+              )}
             </TabsContent>
             <TabsContent value="add">
               <TradeForm />

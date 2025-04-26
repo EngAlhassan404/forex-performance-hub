@@ -14,7 +14,8 @@ import {
   PieChart,
   Pie
 } from 'recharts';
-import { Trade, TradingSession } from '@/lib/types';
+import { Trade, TradingSession, SessionPerformance } from '@/lib/types';
+import { sessionTimes, getSessionDescription } from '@/lib/sessionData';
 
 interface SessionAnalysisProps {
   trades: Trade[];
@@ -32,21 +33,9 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
     wins: number
   }>();
   
-  // Define sessions for display
-  const sessionsDisplay: Record<TradingSession, string> = {
-    'TOKYO': 'Tokyo',
-    'SYDNEY': 'Sydney',
-    'LONDON': 'London',
-    'NEW_YORK': 'New York',
-    'TOKYO_LONDON': 'Tokyo-London',
-    'LONDON_NEW_YORK': 'London-New York',
-    'SYDNEY_TOKYO': 'Sydney-Tokyo',
-    'NEW_YORK_SYDNEY': 'New York-Sydney'
-  };
-  
   // Initialize session data
-  Object.keys(sessionsDisplay).forEach(session => {
-    sessionMap.set(session as TradingSession, {
+  sessionTimes.forEach(session => {
+    sessionMap.set(session.name, {
       trades: [],
       profit: 0,
       count: 0,
@@ -77,7 +66,7 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
   
   // Convert to array for charts
   const sessionData = Array.from(sessionMap.entries()).map(([session, data]) => ({
-    name: sessionsDisplay[session],
+    name: sessionTimes.find(s => s.name === session)?.displayName || session,
     profit: data.profit,
     count: data.count,
     winRate: data.count > 0 ? (data.wins / data.count * 100).toFixed(1) : '0',
@@ -93,7 +82,8 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
   // Calculate trade distribution for pie chart
   const tradeDistribution = activeSessionData.map(s => ({
     name: s.name,
-    value: s.count
+    value: s.count,
+    displayName: `${s.name} (${getSessionDescription(s.session as TradingSession).split('(')[1].split(')')[0]})`
   }));
   
   // Colors for charts
@@ -130,6 +120,10 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
                 <Tooltip 
                   formatter={(value: number) => [`$${value}`, 'Profit']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                  labelFormatter={(label) => {
+                    const session = sortedByProfit.find(s => s.name === label)?.session as TradingSession;
+                    return getSessionDescription(session);
+                  }}
                 />
                 <Bar dataKey="profit" radius={[4, 4, 4, 4]} barSize={20}>
                   {sortedByProfit.map((entry, index) => (
@@ -172,6 +166,10 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
                 <Tooltip 
                   formatter={(value: number) => [`${value}%`, 'Win Rate']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                  labelFormatter={(label) => {
+                    const session = activeSessionData.find(s => s.name === label)?.session as TradingSession;
+                    return getSessionDescription(session);
+                  }}
                 />
                 <Bar 
                   dataKey="winRate" 
@@ -206,7 +204,13 @@ const SessionAnalysis = ({ trades }: SessionAnalysisProps) => {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => [`${value} trades`, 'Count']} />
+              <Tooltip 
+                formatter={(value: number) => [`${value} trades`, 'Count']}
+                labelFormatter={(label, entry) => {
+                  const dataEntry = tradeDistribution.find(item => item.name === label);
+                  return dataEntry?.displayName || label;
+                }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
