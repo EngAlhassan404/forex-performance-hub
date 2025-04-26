@@ -1,10 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dummyMetrics, dummyDailyPerformance } from '@/lib/dummyData';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Button } from '@/components/ui/button';
+import { Calendar, ChevronDown } from 'lucide-react';
+import { dummyMetrics, dummyDailyPerformance, dummyTrades } from '@/lib/dummyData';
 import EquityCurve from '@/components/analytics/EquityCurve';
 import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
+import SessionAnalysis from '@/components/analytics/SessionAnalysis';
 import PerformanceMetrics from '@/components/analytics/PerformanceMetrics';
 import { 
   ResponsiveContainer, 
@@ -18,6 +29,9 @@ import {
 } from 'recharts';
 
 const OverviewTab = () => {
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState('1M');
+  
   // Format data for day of week chart
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayOfWeekData = daysOfWeek.map(day => ({
@@ -28,6 +42,39 @@ const OverviewTab = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex items-center relative">
+            <div className="flex space-x-2 border rounded-md p-2">
+              <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div className="flex space-x-2">
+                <DatePicker date={dateRange[0]} setDate={(date) => setDateRange([date, dateRange[1]])} placeholder="Start date" />
+                <span className="text-muted-foreground">to</span>
+                <DatePicker date={dateRange[1]} setDate={(date) => setDateRange([dateRange[0], date])} placeholder="End date" />
+              </div>
+            </div>
+          </div>
+          <Select value={selectedTimePeriod} onValueChange={setSelectedTimePeriod}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1W">1 Week</SelectItem>
+              <SelectItem value="1M">1 Month</SelectItem>
+              <SelectItem value="3M">3 Months</SelectItem>
+              <SelectItem value="6M">6 Months</SelectItem>
+              <SelectItem value="1Y">1 Year</SelectItem>
+              <SelectItem value="ALL">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <Button variant="outline">
+          <ChevronDown className="h-4 w-4 mr-2" />
+          Filter Options
+        </Button>
+      </div>
+      
       <PerformanceMetrics metrics={dummyMetrics} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -89,6 +136,18 @@ const OverviewTab = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+      
+      {/* New section for session analysis */}
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Trading Session Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SessionAnalysis trades={dummyTrades} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

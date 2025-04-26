@@ -3,7 +3,7 @@
 export interface Trade {
   id: string;
   pair: string;
-  type: 'BUY' | 'SELL';
+  type: 'BUY' | 'SELL' | 'NEUTRAL';
   entryDate: string;
   entryPrice: number;
   exitDate: string | null;
@@ -20,7 +20,20 @@ export interface Trade {
   tags: string[];
   strategy: string;
   status: 'OPEN' | 'CLOSED';
+  session: TradingSession | null;
+  capitalGrowth: number | null;
+  riskPercentage: number | null;
 }
+
+export type TradingSession = 
+  | 'TOKYO' 
+  | 'SYDNEY' 
+  | 'LONDON' 
+  | 'NEW_YORK' 
+  | 'TOKYO_LONDON' 
+  | 'LONDON_NEW_YORK' 
+  | 'SYDNEY_TOKYO' 
+  | 'NEW_YORK_SYDNEY';
 
 // Performance metric types
 export interface PerformanceMetric {
@@ -52,8 +65,24 @@ export interface TradeDistribution {
 export interface TradeFilter {
   dateRange?: [Date | null, Date | null];
   pairs?: string[];
-  types?: ('BUY' | 'SELL')[];
+  types?: ('BUY' | 'SELL' | 'NEUTRAL')[];
   status?: ('OPEN' | 'CLOSED')[];
   strategies?: string[];
   tags?: string[];
+  sessions?: TradingSession[];
+}
+
+// User authentication
+export interface User {
+  id: string;
+  username: string;
+  role: 'ADMIN' | 'USER';
+}
+
+// Session analysis
+export interface SessionPerformance {
+  session: TradingSession;
+  totalProfit: number;
+  tradeCount: number;
+  winRate: number;
 }

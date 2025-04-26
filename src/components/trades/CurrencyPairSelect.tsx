@@ -35,6 +35,7 @@ const CurrencyPairSelect = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="mb-2"
+              autoFocus
             />
           </div>
           <ScrollArea className="h-[200px]">
