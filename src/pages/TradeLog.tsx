@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/layout/Navbar';
@@ -91,10 +92,64 @@ const TradeLog = () => {
         (payload) => {
           // Handle different events
           if (payload.eventType === 'INSERT') {
-            setTrades(prev => [payload.new as Trade, ...prev]);
+            // Map the new trade to our Trade type
+            const newTrade: Trade = {
+              id: payload.new.id,
+              pair: payload.new.pair,
+              type: payload.new.type as 'BUY' | 'SELL' | 'NEUTRAL',
+              entryDate: payload.new.entry_date,
+              entryPrice: payload.new.entry_price,
+              exitDate: payload.new.exit_date,
+              exitPrice: payload.new.exit_price,
+              stopLoss: payload.new.stop_loss,
+              takeProfit: payload.new.take_profit,
+              lotSize: payload.new.lot_size,
+              commission: payload.new.commission,
+              swap: payload.new.swap,
+              profit: payload.new.profit,
+              pips: payload.new.pips,
+              riskRewardRatio: payload.new.risk_reward_ratio,
+              notes: payload.new.notes || '',
+              tags: payload.new.tags || [],
+              strategy: payload.new.strategy || '',
+              status: payload.new.status as 'OPEN' | 'CLOSED',
+              session: payload.new.session as TradingSession || null,
+              capitalGrowth: payload.new.capital_growth,
+              riskPercentage: payload.new.risk_percentage
+            };
+            
+            setTrades(prev => [newTrade, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             setTrades(prev => 
-              prev.map(trade => trade.id === payload.new.id ? payload.new as Trade : trade)
+              prev.map(trade => {
+                if (trade.id === payload.new.id) {
+                  return {
+                    id: payload.new.id,
+                    pair: payload.new.pair,
+                    type: payload.new.type as 'BUY' | 'SELL' | 'NEUTRAL',
+                    entryDate: payload.new.entry_date,
+                    entryPrice: payload.new.entry_price,
+                    exitDate: payload.new.exit_date,
+                    exitPrice: payload.new.exit_price,
+                    stopLoss: payload.new.stop_loss,
+                    takeProfit: payload.new.take_profit,
+                    lotSize: payload.new.lot_size,
+                    commission: payload.new.commission,
+                    swap: payload.new.swap,
+                    profit: payload.new.profit,
+                    pips: payload.new.pips,
+                    riskRewardRatio: payload.new.risk_reward_ratio,
+                    notes: payload.new.notes || '',
+                    tags: payload.new.tags || [],
+                    strategy: payload.new.strategy || '',
+                    status: payload.new.status as 'OPEN' | 'CLOSED',
+                    session: payload.new.session as TradingSession || null,
+                    capitalGrowth: payload.new.capital_growth,
+                    riskPercentage: payload.new.risk_percentage
+                  };
+                }
+                return trade;
+              })
             );
           } else if (payload.eventType === 'DELETE') {
             setTrades(prev => 

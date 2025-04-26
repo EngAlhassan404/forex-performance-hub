@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +38,7 @@ const TradeForm = () => {
   const [strategy, setStrategy] = useState<string>('');
   const [session, setSession] = useState<TradingSession | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-	const [riskPercentage, setRiskPercentage] = useState<string>('');
+  const [riskPercentage, setRiskPercentage] = useState<string>('');
   
   const availableSessions = getAvailableSessions();
   const { toast } = useToast();
@@ -163,7 +164,7 @@ const TradeForm = () => {
         strategy: strategy || null,
         status: exitPrice ? 'CLOSED' : 'OPEN',
         session: session || null,
-        risk_percentage: parseFloat(riskPercentage || '0')
+        risk_percentage: riskPercentage ? parseFloat(riskPercentage) : null
       };
       
       const { data, error } = await supabase
