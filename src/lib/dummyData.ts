@@ -1,5 +1,4 @@
-
-import { Trade, PerformanceMetric, DailyPerformance, PairPerformance, TradeDistribution } from './types';
+import { Trade, PerformanceMetric, DailyPerformance, PairPerformance, TradeDistribution, TradingSession } from './types';
 
 export const dummyTrades: Trade[] = [
   {
@@ -198,7 +197,7 @@ export const dummyTrades: Trade[] = [
   ...trade,
   type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL', // Type assertion for type
   status: trade.status as 'CLOSED' | 'OPEN', // Type assertion for status
-  session: trade.session || 'NEW_YORK', // default if not specified
+  session: (trade.session || 'NEW_YORK') as TradingSession, // Cast to TradingSession
   capitalGrowth: trade.capitalGrowth ?? (trade.profit || 0),
   riskPercentage: trade.riskPercentage ?? Math.round(Math.random() * 3 + 1) // random between 1-4
 }));
