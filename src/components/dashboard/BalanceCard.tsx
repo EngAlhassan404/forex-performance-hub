@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Wallet, ArrowUpRight, ArrowDownRight, Plus, RefreshCcw } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Plus, ChevronDown } from 'lucide-react';
 import { Trade } from '@/lib/types';
 import {
   Dialog,
@@ -14,10 +14,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Calculate total profit from trades
 const calculateTotalProfit = (trades: Trade[]) => {
@@ -32,6 +39,7 @@ const calculateTotalProfit = (trades: Trade[]) => {
 
 const BalanceCard = ({ trades }: { trades: Trade[] }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [newFunds, setNewFunds] = useState('');
   const { toast } = useToast();
 
@@ -57,8 +65,42 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     ? (totalProfit / initialBalance) * 100 
     : 0;
   
-  // Calculate max drawdown (simplified version)
-  const maxDrawdown = trades.length > 0 ? -5.2 : 0; // Only show if there are trades
+  // Calculate max drawdown - we'll implement a proper calculation
+  const calculateMaxDrawdown = (trades: Trade[]) => {
+    if (trades.length === 0) return 0;
+    
+    const closedTrades = trades.filter(trade => trade.status === 'CLOSED')
+      .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
+      
+    if (closedTrades.length === 0) return 0;
+    
+    let peak = initialBalance;
+    let maxDrawdown = 0;
+    let currentBalance = initialBalance;
+    
+    // Iterate through trades chronologically
+    closedTrades.forEach(trade => {
+      // Update current balance
+      currentBalance += (trade.profit || 0) - (trade.commission || 0) - (trade.swap || 0);
+      
+      // Update peak if we have a new high
+      if (currentBalance > peak) {
+        peak = currentBalance;
+      }
+      
+      // Calculate drawdown from peak
+      const drawdown = peak > 0 ? ((peak - currentBalance) / peak) * 100 : 0;
+      
+      // Update max drawdown if this is worse
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+      }
+    });
+    
+    return maxDrawdown;
+  };
+  
+  const maxDrawdown = calculateMaxDrawdown(trades);
 
   // Update initial balance when adding funds
   const handleAddFunds = () => {
@@ -77,7 +119,7 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     
     toast({
       title: "Funds added",
-      description: `$${parseFloat(newFunds).toFixed(2)} has been added to your account.`,
+      description: `$${parseFloat(newFunds).toFixed(3)} has been added to your account.`,
     });
     
     setNewFunds('');
@@ -91,8 +133,10 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     
     toast({
       title: "Capital reset",
-      description: "Your capital has been reset to $0.00",
+      description: "Your capital has been reset to $0.000",
     });
+    
+    setIsAlertOpen(false);
   };
 
   return (
@@ -101,68 +145,27 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
         <CardTitle className="text-lg flex items-center">
           <Wallet className="mr-2 h-5 w-5" /> Account Balance
         </CardTitle>
-        <div className="flex space-x-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                <Plus className="mr-2 h-4 w-4" /> Add Funds
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Funds to Account</DialogTitle>
-                <DialogDescription>
-                  Enter the amount you want to add to your trading account.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount (USD)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={newFunds}
-                    onChange={(e) => setNewFunds(e.target.value)}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddFunds}>Add Funds</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="outline" className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 hover:text-red-700">
-                <RefreshCcw className="mr-2 h-4 w-4" /> Reset Capital
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reset Capital to Zero</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will reset your initial capital to $0.00. This action cannot be undone. 
-                  Your trade history will remain unchanged.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetCapital} className="bg-red-600 hover:bg-red-700">
-                  Reset Capital
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <ChevronDown className="h-4 w-4 mr-1" /> Capital Options
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Add Funds
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setIsAlertOpen(true)} className="text-red-600">
+              Reset Capital to Zero
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
       <CardContent>
         <div className="text-3xl font-bold tracking-tight">
-          ${totalBalance.toFixed(2)}
+          ${totalBalance.toFixed(3)}
         </div>
         
         {trades.length > 0 && (
@@ -174,7 +177,7 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
                 <ArrowDownRight className="h-4 w-4 mr-1" />
               )}
               <span className="text-sm font-medium">
-                ${Math.abs(totalProfit).toFixed(2)} ({profitPercentage.toFixed(2)}%)
+                ${Math.abs(totalProfit).toFixed(3)} ({profitPercentage.toFixed(3)}%)
               </span>
             </div>
           </div>
@@ -183,35 +186,84 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
             <p className="text-xs text-muted-foreground">Initial Capital</p>
-            <p className="text-sm font-medium">${initialBalance.toFixed(2)}</p>
+            <p className="text-sm font-medium">${initialBalance.toFixed(3)}</p>
           </div>
           {trades.length > 0 && (
             <>
               <div>
                 <p className="text-xs text-muted-foreground">Net Profit/Loss</p>
                 <p className={`text-sm font-medium ${totalProfit >= 0 ? 'text-forex-profit' : 'text-forex-loss'}`}>
-                  ${totalProfit.toFixed(2)}
+                  ${totalProfit.toFixed(3)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Commission</p>
                 <p className="text-sm font-medium text-forex-loss">
-                  ${totalCommissions.toFixed(2)} 
+                  ${totalCommissions.toFixed(3)} 
                   {initialBalance > 0 && (
-                    <span>({((totalCommissions / initialBalance) * 100).toFixed(2)}%)</span>
+                    <span>({((totalCommissions / initialBalance) * 100).toFixed(3)}%)</span>
                   )}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Max Drawdown</p>
                 <p className="text-sm font-medium text-forex-loss">
-                  {maxDrawdown}%
+                  {maxDrawdown.toFixed(3)}%
                 </p>
               </div>
             </>
           )}
         </div>
       </CardContent>
+      
+      {/* Add Funds Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Funds to Account</DialogTitle>
+            <DialogDescription>
+              Enter the amount you want to add to your trading account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount (USD)</Label>
+              <Input
+                id="amount"
+                type="number"
+                min="0"
+                step="0.001"
+                placeholder="0.000"
+                value={newFunds}
+                onChange={(e) => setNewFunds(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddFunds}>Add Funds</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Reset Capital Alert */}
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Capital to Zero</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset your initial capital to $0.000. This action cannot be undone. 
+              Your trade history will remain unchanged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetCapital} className="bg-red-600 hover:bg-red-700">
+              Reset Capital
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

@@ -100,14 +100,14 @@ const EquityCurve = ({ trades }: EquityCurveProps) => {
               tickLine={false}
             />
             <YAxis 
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => `$${value.toFixed(3)}`}
               tick={{ fontSize: 12 }}
               axisLine={false}
               tickLine={false}
               width={60}
             />
             <Tooltip
-              formatter={(value: number) => [`$${value}`, 'Balance']}
+              formatter={(value: number) => [`$${value.toFixed(3)}`, 'Balance']}
               labelFormatter={(label) => formatDate(label as string)}
               contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
             />

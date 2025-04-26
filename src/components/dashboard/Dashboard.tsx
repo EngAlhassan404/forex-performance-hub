@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trade } from '@/lib/types';
@@ -37,29 +37,42 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
       ? winningTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0) / winningTrades.length
       : 0;
     
+    // Calculate profit factor (total profits / total losses)
+    const profitFactor = () => {
+      const totalWins = trades
+        .filter(trade => trade.status === 'CLOSED' && (trade.profit || 0) > 0)
+        .reduce((acc, trade) => acc + (trade.profit || 0), 0);
+      
+      const totalLosses = Math.abs(trades
+        .filter(trade => trade.status === 'CLOSED' && (trade.profit || 0) < 0)
+        .reduce((acc, trade) => acc + (trade.profit || 0), 0));
+      
+      return totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 1 : 0;
+    };
+    
     return [
       {
         name: "Win Rate",
-        value: `${winRate.toFixed(1)}%`,
-        change: 2.5,
-        isPositive: true
+        value: `${winRate.toFixed(3)}%`,
+        change: 0,
+        isPositive: winRate > 50
       },
       {
         name: "Profit Factor",
-        value: trades.length > 0 ? "1.8" : "0",
-        change: 0.3,
-        isPositive: true
+        value: profitFactor().toFixed(3),
+        change: 0,
+        isPositive: profitFactor() >= 1
       },
       {
         name: "Avg Profit",
-        value: `$${avgProfit.toFixed(2)}`,
-        change: 5.2,
-        isPositive: true
+        value: `$${avgProfit.toFixed(3)}`,
+        change: 0,
+        isPositive: avgProfit > 0
       },
       {
         name: "Total P/L",
-        value: `$${totalProfit.toFixed(2)}`,
-        change: 10.1,
+        value: `$${totalProfit.toFixed(3)}`,
+        change: 0,
         isPositive: totalProfit >= 0
       }
     ];
@@ -146,13 +159,13 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
                               ) : (
                                 <ArrowDownRight className="h-3 w-3 mr-1" />
                               )}
-                              ${Math.abs(trade.profit || 0).toFixed(2)}
+                              ${Math.abs(trade.profit || 0).toFixed(3)}
                             </div>
                           </td>
                           <td className={`p-2 text-sm text-right ${
                             (trade.pips || 0) >= 0 ? 'text-forex-profit' : 'text-forex-loss'
                           }`}>
-                            {(trade.pips || 0) >= 0 ? '+' : ''}{trade.pips}
+                            {(trade.pips || 0) >= 0 ? '+' : ''}{(trade.pips || 0).toFixed(1)}
                           </td>
                         </tr>
                       ))}
@@ -173,13 +186,7 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
               <CardTitle className="text-lg">Currency Pair Performance</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              {trades.length > 0 ? (
-                <PairPerformance trades={trades} />
-              ) : (
-                <div className="py-8 text-center text-muted-foreground">
-                  No trade data available. Add trades to see pair performance.
-                </div>
-              )}
+              <PairPerformance trades={trades} />
             </CardContent>
           </Card>
         </div>

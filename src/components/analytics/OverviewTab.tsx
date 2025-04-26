@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Select,
@@ -11,7 +11,6 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar, ChevronDown } from 'lucide-react';
-import { dummyMetrics, dummyDailyPerformance, dummyTrades } from '@/lib/dummyData';
 import EquityCurve from '@/components/analytics/EquityCurve';
 import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
@@ -97,11 +96,88 @@ const OverviewTab = () => {
   
   // Format data for day of week chart
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dayOfWeekData = daysOfWeek.map(day => ({
-    day,
-    profit: Math.random() * 200 - 50, // Dummy data
-    trades: Math.floor(Math.random() * 10)
-  }));
+  const dayOfWeekData = useMemo(() => {
+    if (!trades || trades.length === 0) {
+      return daysOfWeek.map(day => ({
+        day,
+        profit: 0,
+        trades: 0
+      }));
+    }
+    
+    const dayProfits: Record<string, { profit: number, count: number }> = {};
+    daysOfWeek.forEach(day => {
+      dayProfits[day] = { profit: 0, count: 0 };
+    });
+    
+    // Calculate profit by day of week from actual trades
+    trades
+      .filter(trade => trade.status === 'CLOSED' && trade.profit !== null)
+      .forEach(trade => {
+        const exitDate = new Date(trade.exitDate || trade.entryDate);
+        const dayName = daysOfWeek[exitDate.getDay()];
+        dayProfits[dayName].profit += (trade.profit || 0);
+        dayProfits[dayName].count += 1;
+      });
+    
+    return daysOfWeek.map(day => ({
+      day,
+      profit: dayProfits[day].profit,
+      trades: dayProfits[day].count
+    }));
+  }, [trades]);
+
+  // Calculate performance metrics
+  const metrics = useMemo(() => {
+    if (trades.length === 0) return [];
+    
+    // Calculate win rate
+    const closedTrades = trades.filter(trade => trade.status === 'CLOSED');
+    const winningTrades = closedTrades.filter(trade => (trade.profit || 0) > 0);
+    const winRate = closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0;
+    
+    // Calculate profit factor
+    const totalProfit = winningTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
+    const totalLoss = Math.abs(closedTrades
+      .filter(trade => (trade.profit || 0) < 0)
+      .reduce((sum, trade) => sum + (trade.profit || 0), 0));
+    const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : totalProfit > 0 ? 1 : 0;
+    
+    // Calculate average trade
+    const averageTrade = closedTrades.length > 0 
+      ? closedTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0) / closedTrades.length 
+      : 0;
+    
+    // Calculate net profit
+    const netProfit = closedTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
+    
+    return [
+      {
+        name: "Win Rate",
+        value: `${winRate.toFixed(3)}%`,
+        change: 0,
+        isPositive: winRate >= 50
+      },
+      {
+        name: "Profit Factor",
+        value: profitFactor.toFixed(3),
+        change: 0,
+        isPositive: profitFactor >= 1
+      },
+      {
+        name: "Average Trade",
+        value: `$${averageTrade.toFixed(3)}`,
+        change: 0,
+        isPositive: averageTrade >= 0
+      },
+      {
+        name: "Net Profit",
+        value: `$${netProfit.toFixed(3)}`,
+        change: 0,
+        isPositive: netProfit >= 0
+      }
+    ];
+  }, [trades]);
 
   return (
     <div className="space-y-6">
@@ -138,7 +214,7 @@ const OverviewTab = () => {
         </Button>
       </div>
       
-      <PerformanceMetrics metrics={dummyMetrics} />
+      <PerformanceMetrics metrics={metrics} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
@@ -184,8 +260,15 @@ const OverviewTab = () => {
                 <BarChart data={dayOfWeekData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
-                  <Tooltip />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(value) => `$${value.toFixed(3)}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`$${value.toFixed(3)}`, 'Profit']}
+                    labelFormatter={(label) => `${label}`}
+                  />
                   <Bar dataKey="profit" fill="#4CAF50" radius={[4, 4, 0, 0]}>
                     {dayOfWeekData.map((entry, index) => (
                       <Cell 

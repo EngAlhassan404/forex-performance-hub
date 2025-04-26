@@ -44,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useNavigate } from "react-router-dom";
 
 interface TradeTableProps {
   data: Trade[];
@@ -54,14 +55,16 @@ const TradeTable = ({ data }: TradeTableProps) => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [tradeToDelete, setTradeToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Function to handle editing a trade
   const handleEditTrade = (tradeId: string) => {
-    // Navigate to trade edit page or open modal
+    navigate(`/edit-trade/${tradeId}`);
+    
     // For now, just show a toast message
     toast({
       title: "Edit trade",
-      description: `Edit functionality coming soon for trade: ${tradeId}`,
+      description: `Editing trade: ${tradeId}`,
     });
   };
   
@@ -189,10 +192,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
         
         if (profit === null) return <div className="text-right">-</div>;
         
-        const formatted = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(profit);
+        const formatted = `$${profit.toFixed(3)}`;
         
         return (
           <div className={`text-right font-medium ${profit >= 0 ? "text-forex-profit" : "text-forex-loss"}`}>
@@ -211,7 +211,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
         
         return (
           <div className={`text-right font-medium ${pips >= 0 ? "text-forex-profit" : "text-forex-loss"}`}>
-            {pips >= 0 ? `+${pips}` : pips}
+            {pips >= 0 ? `+${pips.toFixed(1)}` : pips.toFixed(1)}
           </div>
         );
       },

@@ -64,7 +64,12 @@ const PairPerformance = ({ trades }: PairPerformanceProps) => {
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.2} />
-          <XAxis type="number" axisLine={false} tickLine={false} />
+          <XAxis 
+            type="number" 
+            axisLine={false} 
+            tickLine={false}
+            tickFormatter={(value) => `$${value.toFixed(3)}`}
+          />
           <YAxis 
             type="category" 
             dataKey="pair" 
@@ -74,7 +79,7 @@ const PairPerformance = ({ trades }: PairPerformanceProps) => {
             dx={-10}
           />
           <Tooltip
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
+            formatter={(value: number) => [`$${value.toFixed(3)}`, 'Profit']}
             labelFormatter={(label) => `${label}`}
             contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
           />

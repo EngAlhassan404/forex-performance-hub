@@ -22,7 +22,12 @@ const PerformanceMetrics = ({ metrics }: PerformanceMetricsProps) => {
                     ? (metric.isPositive ? 'text-forex-profit' : 'text-forex-loss')
                     : (metric.isPositive ? 'text-forex-profit' : 'text-forex-loss')
                 }`}>
-                  {metric.value}
+                  {/* Format numerical values to 3 decimal places if they contain a number */}
+                  {typeof metric.value === 'string' && metric.value.includes('$') 
+                    ? `$${parseFloat(metric.value.replace('$', '')).toFixed(3)}`
+                    : typeof metric.value === 'string' && metric.value.includes('%')
+                    ? `${parseFloat(metric.value.replace('%', '')).toFixed(3)}%`
+                    : metric.value}
                 </p>
                 {metric.change !== undefined && (
                   <div className={`flex items-center ${
@@ -34,7 +39,7 @@ const PerformanceMetrics = ({ metrics }: PerformanceMetricsProps) => {
                       <ArrowDownRight className="h-4 w-4 mr-1" />
                     )}
                     <span className="text-sm font-medium">
-                      {Math.abs(metric.change).toFixed(1)}%
+                      {Math.abs(metric.change).toFixed(3)}%
                     </span>
                   </div>
                 )}
