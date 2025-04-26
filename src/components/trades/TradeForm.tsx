@@ -37,6 +37,7 @@ const TradeForm = () => {
   const [strategy, setStrategy] = useState<string>('');
   const [session, setSession] = useState<TradingSession | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+	const [riskPercentage, setRiskPercentage] = useState<string>('');
   
   const availableSessions = getAvailableSessions();
   const { toast } = useToast();
@@ -97,10 +98,9 @@ const TradeForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Calculate stop loss and take profit prices
       const { sl, tp } = calculateStopLossTakeProfit();
       
-      // Calculate profit (if exit price is provided)
+      // Calculate profit if exit price is provided
       let profit = null;
       let pips = null;
       
@@ -142,39 +142,36 @@ const TradeForm = () => {
         }
       }
       
-      // Prepare the trade data
+      // Prepare the trade data matching Supabase schema
       const tradeData = {
         pair: currencyPair,
         type: tradeType,
-        entryDate,
-        entryPrice: parseFloat(entryPrice),
-        exitDate: exitDate || null,
-        exitPrice: exitPrice ? parseFloat(exitPrice) : null,
-        stopLoss: sl,
-        takeProfit: tp,
-        lotSize: parseFloat(lotSize),
+        entry_date: entryDate,
+        entry_price: parseFloat(entryPrice),
+        exit_date: exitDate || null,
+        exit_price: exitPrice ? parseFloat(exitPrice) : null,
+        stop_loss: sl,
+        take_profit: tp,
+        lot_size: parseFloat(lotSize),
         commission: parseFloat(commission || '0'),
         swap: parseFloat(swap || '0'),
         profit,
         pips,
-        riskRewardRatio,
+        risk_reward_ratio: riskRewardRatio,
         notes,
         tags: selectedTags,
         strategy: strategy || null,
         status: exitPrice ? 'CLOSED' : 'OPEN',
         session: session || null,
-        riskPercentage: null, // Will be calculated on the backend based on account settings
+        risk_percentage: parseFloat(riskPercentage || '0')
       };
       
-      // Save to Supabase
       const { data, error } = await supabase
         .from('trades')
         .insert([tradeData])
         .select();
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       toast({
         title: "Trade successfully saved",
@@ -218,7 +215,7 @@ const TradeForm = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="pair">Currency Pair</Label>
-                <CurrencyPairSelect value={currencyPair} onChange={setCurrencyPair} />
+                <CurrencyPairSelect value={currencyPair} onValueChange={setCurrencyPair} />
               </div>
 
               <div className="space-y-2">

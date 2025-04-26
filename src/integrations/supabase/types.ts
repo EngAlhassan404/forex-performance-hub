@@ -42,6 +42,87 @@ export type Database = {
         }
         Relationships: []
       }
+      trades: {
+        Row: {
+          capital_growth: number | null
+          commission: number | null
+          created_at: string | null
+          entry_date: string
+          entry_price: number
+          exit_date: string | null
+          exit_price: number | null
+          id: string
+          lot_size: number
+          notes: string | null
+          pair: string
+          pips: number | null
+          profit: number | null
+          risk_percentage: number | null
+          risk_reward_ratio: number | null
+          session: string | null
+          status: string
+          stop_loss: number | null
+          strategy: string | null
+          swap: number | null
+          tags: string[] | null
+          take_profit: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          capital_growth?: number | null
+          commission?: number | null
+          created_at?: string | null
+          entry_date: string
+          entry_price: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: string
+          lot_size: number
+          notes?: string | null
+          pair: string
+          pips?: number | null
+          profit?: number | null
+          risk_percentage?: number | null
+          risk_reward_ratio?: number | null
+          session?: string | null
+          status: string
+          stop_loss?: number | null
+          strategy?: string | null
+          swap?: number | null
+          tags?: string[] | null
+          take_profit?: number | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          capital_growth?: number | null
+          commission?: number | null
+          created_at?: string | null
+          entry_date?: string
+          entry_price?: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: string
+          lot_size?: number
+          notes?: string | null
+          pair?: string
+          pips?: number | null
+          profit?: number | null
+          risk_percentage?: number | null
+          risk_reward_ratio?: number | null
+          session?: string | null
+          status?: string
+          stop_loss?: number | null
+          strategy?: string | null
+          swap?: number | null
+          tags?: string[] | null
+          take_profit?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

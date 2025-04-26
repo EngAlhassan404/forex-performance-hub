@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/layout/Navbar';
@@ -6,7 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import TradeTable from '@/components/trades/TradeTable';
 import TradeForm from '@/components/trades/TradeForm';
 import { supabase } from '@/integrations/supabase/client';
-import { Trade } from '@/lib/types';
+import { Trade, TradingSession } from '@/lib/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useTradingSessions } from '@/hooks/use-trading-sessions';
 import { Badge } from '@/components/ui/badge';
@@ -32,12 +31,37 @@ const TradeLog = () => {
         const { data, error } = await supabase
           .from('trades')
           .select('*')
-          .order('entryDate', { ascending: false });
+          .order('entry_date', { ascending: false });
           
         if (error) throw error;
         
         if (data) {
-          setTrades(data as Trade[]);
+          // Map Supabase data to our Trade type
+          const mappedTrades: Trade[] = data.map(trade => ({
+            id: trade.id,
+            pair: trade.pair,
+            type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL',
+            entryDate: trade.entry_date,
+            entryPrice: trade.entry_price,
+            exitDate: trade.exit_date,
+            exitPrice: trade.exit_price,
+            stopLoss: trade.stop_loss,
+            takeProfit: trade.take_profit,
+            lotSize: trade.lot_size,
+            commission: trade.commission,
+            swap: trade.swap,
+            profit: trade.profit,
+            pips: trade.pips,
+            riskRewardRatio: trade.risk_reward_ratio,
+            notes: trade.notes || '',
+            tags: trade.tags || [],
+            strategy: trade.strategy || '',
+            status: trade.status as 'OPEN' | 'CLOSED',
+            session: trade.session as TradingSession || null,
+            capitalGrowth: trade.capital_growth,
+            riskPercentage: trade.risk_percentage
+          }));
+          setTrades(mappedTrades);
         }
       } catch (error: any) {
         console.error('Error fetching trades:', error);
@@ -46,7 +70,7 @@ const TradeLog = () => {
           title: "Error loading trades",
           description: error.message || "Failed to load your trades"
         });
-        // Fall back to dummy data if there's an error or if the table doesn't exist yet
+        // Fall back to dummy data if there's an error
         import('@/lib/dummyData').then(({ dummyTrades }) => {
           setTrades(dummyTrades);
         });
