@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [username, setUsername] = useState('');
@@ -28,6 +27,9 @@ const Auth = () => {
           username: 'AlhassanAli',
           role: 'ADMIN'
         }));
+        
+        // Reset all dummy data when logging in
+        localStorage.removeItem('initialBalance');
         
         toast({
           title: "Login successful",
@@ -55,12 +57,13 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md px-4">
-        <Card>
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1950&q=80')" }}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div className="w-full max-w-md px-4 z-10">
+        <Card className="bg-white/90 backdrop-blur-md dark:bg-gray-900/90 border border-gray-200 dark:border-gray-700">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">Forex Journal</CardTitle>
-            <CardDescription>Enter your credentials to access your trading journal</CardDescription>
+            <CardTitle className="text-2xl font-bold text-forex-primary dark:text-white">Forex Trading Journal</CardTitle>
+            <CardDescription className="dark:text-gray-400">Enter your credentials to access your trading journal</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
@@ -72,6 +75,7 @@ const Auth = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  className="bg-white/80 dark:bg-gray-800/80"
                 />
               </div>
               <div className="space-y-2">
@@ -83,11 +87,12 @@ const Auth = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="bg-white/80 dark:bg-gray-800/80"
                 />
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-forex-primary hover:bg-forex-primary/90" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Log in"}
               </Button>
             </CardFooter>

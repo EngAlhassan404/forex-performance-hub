@@ -32,6 +32,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, ChevronDown, Edit, MoreHorizontal, Trash } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TradeTableProps {
   data: Trade[];
@@ -40,6 +52,45 @@ interface TradeTableProps {
 const TradeTable = ({ data }: TradeTableProps) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [tradeToDelete, setTradeToDelete] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Function to handle editing a trade
+  const handleEditTrade = (tradeId: string) => {
+    // Navigate to trade edit page or open modal
+    // For now, just show a toast message
+    toast({
+      title: "Edit trade",
+      description: `Edit functionality coming soon for trade: ${tradeId}`,
+    });
+  };
+  
+  // Function to delete a trade
+  const handleDeleteTrade = async () => {
+    if (!tradeToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('trades')
+        .delete()
+        .eq('id', tradeToDelete);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Trade deleted",
+        description: "The trade has been successfully deleted.",
+      });
+      
+      setTradeToDelete(null);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error deleting trade",
+        description: error.message || "Failed to delete the trade",
+      });
+    }
+  };
   
   const columns: ColumnDef<Trade>[] = [
     {
@@ -197,7 +248,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem
-                onClick={() => console.log('Edit trade:', trade.id)}
+                onClick={() => handleEditTrade(trade.id)}
                 className="cursor-pointer"
               >
                 <Edit className="h-4 w-4 mr-2" />
@@ -205,7 +256,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => console.log('Delete trade:', trade.id)}
+                onClick={() => setTradeToDelete(trade.id)}
                 className="cursor-pointer text-forex-loss"
               >
                 <Trash className="h-4 w-4 mr-2" />
@@ -328,6 +379,25 @@ const TradeTable = ({ data }: TradeTableProps) => {
           Next
         </Button>
       </div>
+      
+      {/* Alert Dialog for confirming delete */}
+      <AlertDialog open={!!tradeToDelete} onOpenChange={() => setTradeToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this trade
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTrade} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -71,10 +71,8 @@ const TradeLog = () => {
           title: "Error loading trades",
           description: error.message || "Failed to load your trades"
         });
-        // Fall back to dummy data if there's an error
-        import('@/lib/dummyData').then(({ dummyTrades }) => {
-          setTrades(dummyTrades);
-        });
+        // Empty array instead of dummy data
+        setTrades([]);
       } finally {
         setIsLoading(false);
       }
@@ -196,7 +194,10 @@ const TradeLog = () => {
             </TabsList>
             <TabsContent value="trades">
               {isLoading ? (
-                <div className="text-center p-8">Loading trades...</div>
+                <div className="text-center p-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-forex-primary mx-auto"></div>
+                  <p className="mt-3 text-muted-foreground">Loading trades...</p>
+                </div>
               ) : (
                 <TradeTable data={trades} />
               )}
