@@ -13,7 +13,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   ReferenceLine,
-  Cell
+  Cell,
+  Legend
 } from 'recharts';
 import { Trade } from '@/lib/types';
 
@@ -46,10 +47,11 @@ const EquityCurve = ({ trades, chartStyle = 'area' }: EquityCurveProps) => {
     const initialBalance = initialBalanceStr ? parseFloat(initialBalanceStr) : 0;
     
     // Create daily equity points based on trades
-    const dailyEquity: { date: string; balance: number; change: number }[] = [];
+    const dailyEquity: { date: string; balance: number; change: number; commission: number }[] = [];
     
     // Start with initial balance
     let currentBalance = initialBalance;
+    let totalCommission = 0;
     
     // Add initial point
     const firstTradeDate = new Date(sortedTrades[0].entryDate);
@@ -58,7 +60,8 @@ const EquityCurve = ({ trades, chartStyle = 'area' }: EquityCurveProps) => {
     dailyEquity.push({
       date: firstTradeDate.toISOString().split('T')[0],
       balance: currentBalance,
-      change: 0
+      change: 0,
+      commission: 0
     });
     
     // Add each trade's impact to the balance
@@ -66,8 +69,10 @@ const EquityCurve = ({ trades, chartStyle = 'area' }: EquityCurveProps) => {
       // Only use closed trades with profit values
       if (trade.status === 'CLOSED' && trade.profit !== null) {
         const tradeDate = new Date(trade.exitDate || trade.entryDate).toISOString().split('T')[0];
-        const tradeProfit = trade.profit;
-        currentBalance += tradeProfit;
+        const tradeProfit = trade.profit - (trade.swap || 0); // Subtract swap but not commission
+        const tradeCommission = trade.commission || 0;
+        currentBalance += tradeProfit; // Don't subtract commission here
+        totalCommission += tradeCommission;
         
         // Check if we already have an entry for this date
         const existingEntry = dailyEquity.find(item => item.date === tradeDate);
@@ -75,15 +80,23 @@ const EquityCurve = ({ trades, chartStyle = 'area' }: EquityCurveProps) => {
         if (existingEntry) {
           existingEntry.balance = currentBalance;
           existingEntry.change += tradeProfit;
+          existingEntry.commission += tradeCommission;
         } else {
           dailyEquity.push({
             date: tradeDate,
             balance: currentBalance,
-            change: tradeProfit
+            change: tradeProfit,
+            commission: tradeCommission
           });
         }
       }
     });
+    
+    // Apply commission deduction to the final balance only
+    if (dailyEquity.length > 0) {
+      const lastEntry = dailyEquity[dailyEquity.length - 1];
+      lastEntry.balance -= totalCommission;
+    }
     
     return dailyEquity;
   }, [trades]);
@@ -127,7 +140,12 @@ const EquityCurve = ({ trades, chartStyle = 'area' }: EquityCurveProps) => {
           width={60}
         />
         <Tooltip
-          formatter={(value: number) => [`$${value.toFixed(3)}`, 'Balance']}
+          formatter={(value: number, name: string) => {
+            if (name === 'balance') return [`$${value.toFixed(3)}`, 'Balance'];
+            if (name === 'change') return [`$${value.toFixed(3)}`, 'P/L'];
+            if (name === 'commission') return [`$${value.toFixed(3)}`, 'Commission'];
+            return [value, name];
+          }}
           labelFormatter={(label) => formatDate(label as string)}
           contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
         />

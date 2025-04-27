@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -10,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
-import { Calendar, ChevronDown, LineChart } from 'lucide-react';
+import { Calendar, ChevronDown, LineChart, BarChart2, TrendingUp } from 'lucide-react';
 import EquityCurve from '@/components/analytics/EquityCurve';
 import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
@@ -26,9 +25,6 @@ import {
   Tooltip, 
   CartesianGrid,
   Cell,
-  AreaChart,
-  Area,
-  Legend
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -67,7 +63,7 @@ const OverviewTab = () => {
             stopLoss: trade.stop_loss,
             takeProfit: trade.take_profit,
             lotSize: trade.lot_size,
-            commission: trade.lot_size * 7, // Calculate commission as 7 * lot size
+            commission: trade.commission || (trade.lot_size * 7), // Use commission or calculate if missing
             swap: trade.swap || 0,
             profit: trade.profit,
             pips: trade.pips,
@@ -78,7 +74,9 @@ const OverviewTab = () => {
             status: trade.status as 'OPEN' | 'CLOSED',
             session: trade.session as any || null,
             capitalGrowth: trade.capital_growth,
-            riskPercentage: trade.risk_percentage
+            riskPercentage: trade.risk_percentage,
+            // Set result based on profit
+            result: trade.profit > 0 ? 'WIN' : trade.profit < 0 ? 'LOSS' : trade.profit === 0 ? 'BREAK_EVEN' : null
           }));
           setTrades(mappedTrades);
         }
@@ -139,14 +137,14 @@ const OverviewTab = () => {
     const closedTrades = trades.filter(trade => trade.status === 'CLOSED');
     const winningTrades = closedTrades.filter(trade => (trade.profit || 0) > 0);
     const losingTrades = closedTrades.filter(trade => (trade.profit || 0) < 0);
+    const breakEvenTrades = closedTrades.filter(trade => (trade.profit || 0) === 0);
+    
     const winRate = closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0;
-    const lossRate = 100 - winRate;
+    const lossRate = closedTrades.length > 0 ? (losingTrades.length / closedTrades.length) * 100 : 0;
     
     // Calculate profit factor
     const totalProfit = winningTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
-    const totalLoss = Math.abs(closedTrades
-      .filter(trade => (trade.profit || 0) < 0)
-      .reduce((sum, trade) => sum + (trade.profit || 0), 0));
+    const totalLoss = Math.abs(losingTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0));
     const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : totalProfit > 0 ? 1 : 0;
     
     // Calculate average trade
@@ -176,6 +174,11 @@ const OverviewTab = () => {
     const variance = profitValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / profitValues.length;
     const stdDev = Math.sqrt(variance);
     const sharpeRatio = stdDev > 0 ? mean / stdDev : 0;
+    
+    // Calculate Recovery Factor
+    const maxDrawdown = trades.length > 0 ? 
+      Math.max(...trades.map(t => t.capitalGrowth || 0)) - Math.min(...trades.map(t => t.capitalGrowth || 0)) : 0;
+    const recoveryFactor = maxDrawdown > 0 ? netProfit / maxDrawdown : 0;
     
     return [
       {
@@ -213,6 +216,12 @@ const OverviewTab = () => {
         value: sharpeRatio.toFixed(3),
         change: 0,
         isPositive: sharpeRatio >= 0
+      },
+      {
+        name: "Recovery Factor",
+        value: recoveryFactor.toFixed(3),
+        change: 0,
+        isPositive: recoveryFactor >= 0
       }
     ];
   }, [trades]);
@@ -247,18 +256,31 @@ const OverviewTab = () => {
         </div>
         
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setChartStyle('area')} className={chartStyle === 'area' ? 'bg-gray-100' : ''}>
-            <LineChart className="h-4 w-4 mr-2" />
-            Area
-          </Button>
-          <Button variant="outline" onClick={() => setChartStyle('line')} className={chartStyle === 'line' ? 'bg-gray-100' : ''}>
-            <LineChart className="h-4 w-4 mr-2" />
-            Line
-          </Button>
-          <Button variant="outline" onClick={() => setChartStyle('bar')} className={chartStyle === 'bar' ? 'bg-gray-100' : ''}>
-            <LineChart className="h-4 w-4 mr-2" />
-            Bar
-          </Button>
+          <Select value={chartStyle} onValueChange={(value) => setChartStyle(value as 'area' | 'line' | 'bar')}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Chart Style" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="area">
+                <div className="flex items-center">
+                  <LineChart className="h-4 w-4 mr-2" />
+                  <span>Area Chart</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="line">
+                <div className="flex items-center">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  <span>Line Chart</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="bar">
+                <div className="flex items-center">
+                  <BarChart2 className="h-4 w-4 mr-2" />
+                  <span>Bar Chart</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline">
             <ChevronDown className="h-4 w-4 mr-2" />
             Filter Options

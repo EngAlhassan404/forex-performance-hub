@@ -1,5 +1,5 @@
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Trade } from '@/lib/types';
 
 interface WinRateChartProps {
@@ -15,16 +15,17 @@ const WinRateChart = ({ trades }: WinRateChartProps) => {
     if (closedTrades.length === 0) return [];
     
     const winningTrades = closedTrades.filter(trade => (trade.profit || 0) > 0).length;
-    const losingTrades = closedTrades.length - winningTrades;
+    const losingTrades = closedTrades.filter(trade => (trade.profit || 0) < 0).length;
+    const breakEvenTrades = closedTrades.filter(trade => (trade.profit || 0) === 0).length;
     
     return [
-      { name: 'Winning Trades', value: winningTrades },
-      { name: 'Losing Trades', value: losingTrades }
-    ];
+      { name: 'Winning', value: winningTrades, color: '#4CAF50' },
+      { name: 'Losing', value: losingTrades, color: '#F44336' },
+      { name: 'Break Even', value: breakEvenTrades, color: '#FFC107' }
+    ].filter(item => item.value > 0); // Only include categories with trades
   };
 
   const winRateData = calculateWinRate();
-  const COLORS = ['#4CAF50', '#F44336'];
 
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
     const RADIAN = Math.PI / 180;
@@ -67,7 +68,7 @@ const WinRateChart = ({ trades }: WinRateChartProps) => {
             dataKey="value"
           >
             {winRateData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip 
@@ -78,6 +79,7 @@ const WinRateChart = ({ trades }: WinRateChartProps) => {
               border: '1px solid #e2e8f0'
             }}
           />
+          <Legend />
         </PieChart>
       </ResponsiveContainer>
     </div>

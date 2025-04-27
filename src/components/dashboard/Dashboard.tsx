@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trade } from '@/lib/types';
@@ -8,12 +8,21 @@ import EquityCurve from '@/components/analytics/EquityCurve';
 import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
 import PerformanceMetrics from '@/components/analytics/PerformanceMetrics';
-import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight, LineChart, BarChart2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import BalanceCard from './BalanceCard';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const Dashboard = ({ trades }: { trades: Trade[] }) => {
   const [selectedTimePeriod, setSelectedTimePeriod] = React.useState('1M');
+  // Add state for chart style selection
+  const [chartStyle, setChartStyle] = useState<'area' | 'line' | 'bar'>('area');
   
   // Only show recent trades if there are any
   const recentTrades = trades
@@ -26,29 +35,42 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
     if (trades.length === 0) return [];
     
     // Only calculate metrics if there are trades
-    const winningTrades = trades.filter(trade => trade.status === 'CLOSED' && (trade.profit || 0) > 0);
-    const winRate = trades.length > 0 ? (winningTrades.length / trades.filter(trade => trade.status === 'CLOSED').length) * 100 : 0;
+    const closedTrades = trades.filter(trade => trade.status === 'CLOSED');
+    const winningTrades = closedTrades.filter(trade => (trade.profit || 0) > 0);
+    const losingTrades = closedTrades.filter(trade => (trade.profit || 0) < 0);
+    const breakEvenTrades = closedTrades.filter(trade => (trade.profit || 0) === 0);
     
-    const totalProfit = trades
-      .filter(trade => trade.status === 'CLOSED')
-      .reduce((acc, trade) => acc + (trade.profit || 0), 0);
+    const winRate = closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0;
+    const lossRate = closedTrades.length > 0 ? (losingTrades.length / closedTrades.length) * 100 : 0;
+    
+    const totalProfit = closedTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0);
       
     const avgProfit = winningTrades.length > 0
       ? winningTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0) / winningTrades.length
       : 0;
     
+    const avgLoss = losingTrades.length > 0
+      ? Math.abs(losingTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0)) / losingTrades.length
+      : 0;
+    
     // Calculate profit factor (total profits / total losses)
     const profitFactor = () => {
-      const totalWins = trades
-        .filter(trade => trade.status === 'CLOSED' && (trade.profit || 0) > 0)
-        .reduce((acc, trade) => acc + (trade.profit || 0), 0);
+      const totalWins = winningTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0);
       
-      const totalLosses = Math.abs(trades
-        .filter(trade => trade.status === 'CLOSED' && (trade.profit || 0) < 0)
-        .reduce((acc, trade) => acc + (trade.profit || 0), 0));
+      const totalLosses = Math.abs(losingTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0));
       
       return totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 1 : 0;
     };
+
+    // Calculate expected value
+    const expectedValue = ((winRate / 100) * avgProfit) - ((lossRate / 100) * avgLoss);
+    
+    // Calculate Sharpe Ratio
+    const profitValues = closedTrades.map(trade => trade.profit || 0);
+    const mean = profitValues.reduce((sum, val) => sum + val, 0) / profitValues.length;
+    const variance = profitValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / profitValues.length;
+    const stdDev = Math.sqrt(variance);
+    const sharpeRatio = stdDev > 0 ? mean / stdDev : 0;
     
     return [
       {
@@ -74,6 +96,18 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
         value: `$${totalProfit.toFixed(3)}`,
         change: 0,
         isPositive: totalProfit >= 0
+      },
+      {
+        name: "Expected Value",
+        value: `$${expectedValue.toFixed(3)}`,
+        change: 0,
+        isPositive: expectedValue >= 0
+      },
+      {
+        name: "Sharpe Ratio",
+        value: sharpeRatio.toFixed(3),
+        change: 0,
+        isPositive: sharpeRatio > 0
       }
     ];
   };
@@ -86,9 +120,34 @@ const Dashboard = ({ trades }: { trades: Trade[] }) => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Equity Curve</CardTitle>
+              <Select value={chartStyle} onValueChange={(value) => setChartStyle(value as 'area' | 'line' | 'bar')}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Chart Style" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="area">
+                    <div className="flex items-center">
+                      <LineChart className="h-4 w-4 mr-2" />
+                      <span>Area Chart</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="line">
+                    <div className="flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      <span>Line Chart</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bar">
+                    <div className="flex items-center">
+                      <BarChart2 className="h-4 w-4 mr-2" />
+                      <span>Bar Chart</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent className="pt-0">
-              <EquityCurve trades={trades} />
+              <EquityCurve trades={trades} chartStyle={chartStyle} />
             </CardContent>
           </Card>
         </div>
