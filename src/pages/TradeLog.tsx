@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/layout/Navbar';
@@ -21,6 +20,14 @@ const TradeLog = () => {
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+  
+  // Helper function to determine trade result
+  const determineTradeResult = (profit: number | null) => {
+    if (profit === null) return null;
+    if (profit > 0) return 'WIN';
+    if (profit < 0) return 'LOSS';
+    return 'BREAK_EVEN';
   };
   
   // Fetch trades from Supabase
@@ -60,7 +67,8 @@ const TradeLog = () => {
             status: trade.status as 'OPEN' | 'CLOSED',
             session: trade.session as TradingSession || null,
             capitalGrowth: trade.capital_growth,
-            riskPercentage: trade.risk_percentage
+            riskPercentage: trade.risk_percentage,
+            result: trade.profit !== null ? determineTradeResult(trade.profit) : null
           }));
           setTrades(mappedTrades);
         }
@@ -113,7 +121,8 @@ const TradeLog = () => {
               status: payload.new.status as 'OPEN' | 'CLOSED',
               session: payload.new.session as TradingSession || null,
               capitalGrowth: payload.new.capital_growth,
-              riskPercentage: payload.new.risk_percentage
+              riskPercentage: payload.new.risk_percentage,
+              result: payload.new.profit !== null ? determineTradeResult(payload.new.profit) : null
             };
             
             setTrades(prev => [newTrade, ...prev]);
@@ -143,7 +152,8 @@ const TradeLog = () => {
                     status: payload.new.status as 'OPEN' | 'CLOSED',
                     session: payload.new.session as TradingSession || null,
                     capitalGrowth: payload.new.capital_growth,
-                    riskPercentage: payload.new.risk_percentage
+                    riskPercentage: payload.new.risk_percentage,
+                    result: payload.new.profit !== null ? determineTradeResult(payload.new.profit) : null
                   };
                 }
                 return trade;

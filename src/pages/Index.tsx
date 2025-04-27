@@ -17,6 +17,14 @@ const Index = () => {
     setSidebarOpen(!sidebarOpen);
   };
   
+  // Helper function to determine trade result
+  const determineTradeResult = (profit: number | null) => {
+    if (profit === null) return null;
+    if (profit > 0) return 'WIN';
+    if (profit < 0) return 'LOSS';
+    return 'BREAK_EVEN';
+  };
+  
   // Fetch trades from Supabase
   useEffect(() => {
     const fetchTrades = async () => {
@@ -54,7 +62,8 @@ const Index = () => {
             status: trade.status as 'OPEN' | 'CLOSED',
             session: trade.session as any || null,
             capitalGrowth: trade.capital_growth,
-            riskPercentage: trade.risk_percentage
+            riskPercentage: trade.risk_percentage,
+            result: trade.profit !== null ? determineTradeResult(trade.profit) : null
           }));
           setTrades(mappedTrades);
         }
@@ -107,7 +116,8 @@ const Index = () => {
               status: payload.new.status as 'OPEN' | 'CLOSED',
               session: payload.new.session as any || null,
               capitalGrowth: payload.new.capital_growth,
-              riskPercentage: payload.new.risk_percentage
+              riskPercentage: payload.new.risk_percentage,
+              result: payload.new.profit !== null ? determineTradeResult(payload.new.profit) : null
             };
             
             setTrades(prev => [newTrade, ...prev]);
@@ -137,7 +147,8 @@ const Index = () => {
                     status: payload.new.status as 'OPEN' | 'CLOSED',
                     session: payload.new.session as any || null,
                     capitalGrowth: payload.new.capital_growth,
-                    riskPercentage: payload.new.risk_percentage
+                    riskPercentage: payload.new.risk_percentage,
+                    result: payload.new.profit !== null ? determineTradeResult(payload.new.profit) : null
                   };
                 }
                 return trade;
