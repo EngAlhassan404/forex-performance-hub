@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,13 +95,15 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
       }
     });
     
-    return maxDrawdown;
+    return { maxDrawdown, peak };
   };
   
-  const maxDrawdown = calculateMaxDrawdown(trades);
+  const { maxDrawdown, peak } = calculateMaxDrawdown(trades);
 
   // Calculate recovery factor (Net Profit / Maximum Drawdown)
-  const recoveryFactor = maxDrawdown > 0 ? totalProfit / (maxDrawdown / 100 * peak) : 0;
+  const recoveryFactor = maxDrawdown > 0 
+    ? totalProfit / (maxDrawdown / 100 * peak) 
+    : 0;
 
   // Update initial balance when adding funds
   const handleAddFunds = () => {
