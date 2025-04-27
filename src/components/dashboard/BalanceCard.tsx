@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,13 +65,13 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     : 0;
   
   // Calculate max drawdown with improved methodology
-  const calculateMaxDrawdown = (trades: Trade[]) => {
-    if (trades.length === 0) return 0;
+  const calculateMaxDrawdown = (trades: Trade[]): { maxDrawdown: number; peak: number } => {
+    if (trades.length === 0) return { maxDrawdown: 0, peak: 0 };
     
     const closedTrades = trades.filter(trade => trade.status === 'CLOSED')
       .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
       
-    if (closedTrades.length === 0) return 0;
+    if (closedTrades.length === 0) return { maxDrawdown: 0, peak: 0 };
     
     let peak = initialBalance;
     let maxDrawdown = 0;
