@@ -44,11 +44,11 @@ const Auth = () => {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-cover bg-center" 
       style={{ 
-        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')` 
+        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=2070&auto=format&fit=crop')` 
       }}
     >
       <div className="mx-auto w-full max-w-md p-4">
-        <Card className="bg-white shadow-lg">
+        <Card className="bg-white shadow-lg border-0">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold text-forex-primary">ForexTracker</CardTitle>
             <CardDescription>

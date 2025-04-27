@@ -1,3 +1,4 @@
+
 // Trade types
 export interface Trade {
   id: string;
@@ -22,6 +23,7 @@ export interface Trade {
   session: TradingSession | null;
   capitalGrowth: number | null;
   riskPercentage: number | null;
+  result?: 'WIN' | 'LOSS' | 'BREAK_EVEN' | null;
 }
 
 export type TradingSession = 

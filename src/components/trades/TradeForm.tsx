@@ -32,7 +32,7 @@ const TradeForm = () => {
   const [stopLossPips, setStopLossPips] = useState<string>('');
   const [takeProfitPips, setTakeProfitPips] = useState<string>('');
   const [lotSize, setLotSize] = useState<string>('0.1');
-  const [commission, setCommission] = useState<string>('0');
+  // Commission is now calculated automatically
   const [swap, setSwap] = useState<string>('0');
   const [notes, setNotes] = useState<string>('');
   const [strategy, setStrategy] = useState<string>('');
@@ -114,16 +114,13 @@ const TradeForm = () => {
         const pipFactor = currencyPair.includes('JPY') ? 0.01 : 0.0001;
         
         if (tradeType === 'BUY') {
-          pips = Math.round((exit - entry) / pipFactor);
+          pips = (exit - entry) / pipFactor; // Allow decimal pips
           // Standard calculation: (Exit - Entry) * Lot Size * Pip Value
           profit = (exit - entry) * lotSizeValue * 100000;
         } else {
-          pips = Math.round((entry - exit) / pipFactor);
+          pips = (entry - exit) / pipFactor; // Allow decimal pips
           profit = (entry - exit) * lotSizeValue * 100000;
         }
-        
-        // Subtract commission
-        profit -= parseFloat(commission || '0');
         
         // Adjust for JPY pairs
         if (currencyPair.includes('JPY')) {
@@ -143,6 +140,17 @@ const TradeForm = () => {
         }
       }
       
+      // Calculate commission automatically: lotSize * 7
+      const commission = parseFloat(lotSize) * 7;
+      
+      // Determine trade result (Win/Loss/Break Even)
+      let tradeResult = null;
+      if (profit !== null) {
+        if (profit > 0) tradeResult = 'WIN';
+        else if (profit < 0) tradeResult = 'LOSS';
+        else tradeResult = 'BREAK_EVEN'; // Replace 'NEUTRAL' with 'BREAK_EVEN'
+      }
+      
       // Prepare the trade data matching Supabase schema
       const tradeData = {
         pair: currencyPair,
@@ -154,7 +162,7 @@ const TradeForm = () => {
         stop_loss: sl,
         take_profit: tp,
         lot_size: parseFloat(lotSize),
-        commission: parseFloat(commission || '0'),
+        commission: commission, // Automatically calculated
         swap: parseFloat(swap || '0'),
         profit,
         pips,
@@ -164,7 +172,8 @@ const TradeForm = () => {
         strategy: strategy || null,
         status: exitPrice ? 'CLOSED' : 'OPEN',
         session: session || null,
-        risk_percentage: riskPercentage ? parseFloat(riskPercentage) : null
+        risk_percentage: riskPercentage ? parseFloat(riskPercentage) : null,
+        result: tradeResult // Add trade result field
       };
       
       const { data, error } = await supabase
@@ -185,7 +194,6 @@ const TradeForm = () => {
       setStopLossPips('');
       setTakeProfitPips('');
       setLotSize('0.1');
-      setCommission('0');
       setSwap('0');
       setNotes('');
       setStrategy('');
@@ -201,6 +209,14 @@ const TradeForm = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Format lot size to have exactly 2 decimal places on blur
+  const formatLotSize = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setLotSize(value.toFixed(2));
     }
   };
 
@@ -266,10 +282,16 @@ const TradeForm = () => {
                   type="number" 
                   id="lot-size" 
                   step="0.01" 
+                  min="0.01"
+                  max="100.00"
                   value={lotSize}
                   onChange={(e) => setLotSize(e.target.value)}
+                  onBlur={formatLotSize}
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Commission (auto): ${(parseFloat(lotSize || "0") * 7).toFixed(3)}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -278,6 +300,7 @@ const TradeForm = () => {
                   <Input 
                     type="number" 
                     id="stop-loss-pips" 
+                    step="0.1"
                     value={stopLossPips}
                     onChange={(e) => setStopLossPips(e.target.value)}
                   />
@@ -292,6 +315,7 @@ const TradeForm = () => {
                   <Input 
                     type="number" 
                     id="take-profit-pips" 
+                    step="0.1"
                     value={takeProfitPips}
                     onChange={(e) => setTakeProfitPips(e.target.value)}
                   />
@@ -328,27 +352,15 @@ const TradeForm = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="commission">Commission</Label>
-                  <Input 
-                    type="number" 
-                    id="commission" 
-                    step="0.01" 
-                    value={commission}
-                    onChange={(e) => setCommission(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="swap">Swap</Label>
-                  <Input 
-                    type="number" 
-                    id="swap" 
-                    step="0.01" 
-                    value={swap}
-                    onChange={(e) => setSwap(e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="swap">Swap</Label>
+                <Input 
+                  type="number" 
+                  id="swap" 
+                  step="0.01" 
+                  value={swap}
+                  onChange={(e) => setSwap(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">

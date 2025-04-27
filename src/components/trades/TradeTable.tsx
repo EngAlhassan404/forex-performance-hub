@@ -104,7 +104,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
     const headers = [
       "Pair", "Type", "Entry Date", "Entry Price", "Exit Date", "Exit Price", 
       "Stop Loss", "Take Profit", "Lot Size", "Commission", "Swap", "Profit", 
-      "Pips", "R:R Ratio", "Status", "Session", "Strategy", "Notes"
+      "Pips", "R:R Ratio", "Status", "Result", "Session", "Strategy", "Notes"
     ];
     
     // Convert trade data to CSV rows
@@ -119,13 +119,14 @@ const TradeTable = ({ data }: TradeTableProps) => {
         trade.exitPrice || '',
         trade.stopLoss || '',
         trade.takeProfit || '',
-        trade.lotSize,
+        trade.lotSize.toFixed(2),
         trade.commission.toFixed(3),
         trade.swap.toFixed(3),
         trade.profit ? trade.profit.toFixed(3) : '',
-        trade.pips ? trade.pips.toFixed(3) : '',
+        trade.pips ? trade.pips.toFixed(1) : '', // Allow decimal places for pips
         trade.riskRewardRatio ? trade.riskRewardRatio.toFixed(3) : '',
         trade.status,
+        trade.result || '',
         trade.session || '',
         trade.strategy || '',
         `"${(trade.notes || '').replace(/"/g, '""')}"` // Escape quotes in notes
@@ -165,6 +166,33 @@ const TradeTable = ({ data }: TradeTableProps) => {
       return;
     }
     
+    // Calculate additional metrics for the summary
+    const closedTrades = data.filter(t => t.status === 'CLOSED');
+    const winningTrades = closedTrades.filter(t => (t.profit || 0) > 0);
+    const losingTrades = closedTrades.filter(t => (t.profit || 0) < 0);
+    const breakEvenTrades = closedTrades.filter(t => (t.profit || 0) === 0);
+    
+    const totalProfit = closedTrades.reduce((acc, trade) => acc + (trade.profit || 0), 0);
+    const totalCommission = closedTrades.reduce((acc, trade) => acc + (trade.commission || 0), 0);
+    const winRate = closedTrades.length ? (winningTrades.length / closedTrades.length) * 100 : 0;
+    
+    // Calculate Sharpe Ratio (simplified)
+    const returns = closedTrades.map(t => t.profit || 0);
+    const avgReturn = returns.reduce((sum, val) => sum + val, 0) / (returns.length || 1);
+    const stdDev = Math.sqrt(returns.reduce((sum, val) => sum + Math.pow(val - avgReturn, 2), 0) / (returns.length || 1));
+    const sharpeRatio = stdDev > 0 ? avgReturn / stdDev : 0;
+    
+    // Calculate expected value
+    const avgWin = winningTrades.length > 0 
+      ? winningTrades.reduce((acc, t) => acc + (t.profit || 0), 0) / winningTrades.length 
+      : 0;
+    const avgLoss = losingTrades.length > 0 
+      ? Math.abs(losingTrades.reduce((acc, t) => acc + (t.profit || 0), 0)) / losingTrades.length 
+      : 0;
+    const winRateDecimal = winRate / 100;
+    const lossRateDecimal = 1 - winRateDecimal;
+    const expectedValue = (winRateDecimal * avgWin) - (lossRateDecimal * avgLoss);
+    
     // Create HTML content
     let htmlContent = `
       <!DOCTYPE html>
@@ -183,16 +211,53 @@ const TradeTable = ({ data }: TradeTableProps) => {
           .loss { color: red; }
           .timestamp { text-align: right; color: #777; font-size: 0.9em; margin: 30px 0 10px; }
           .summary { background: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+          .metric-card { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px; }
+          .metric-title { font-size: 0.9em; color: #666; margin-bottom: 5px; }
+          .metric-value { font-size: 1.2em; font-weight: bold; }
+          .win { background-color: rgba(0, 128, 0, 0.1); }
+          .loss { background-color: rgba(255, 0, 0, 0.1); }
+          .break-even { background-color: rgba(0, 0, 0, 0.05); }
         </style>
       </head>
       <body>
         <h1>ForexTracker Trade Log</h1>
         <div class="summary">
-          <strong>Trade Summary</strong>
-          <p>Total Trades: ${data.length}</p>
-          <p>Winning Trades: ${data.filter(t => (t.profit || 0) > 0).length}</p>
-          <p>Losing Trades: ${data.filter(t => (t.profit || 0) < 0).length}</p>
-          <p>Win Rate: ${((data.filter(t => (t.profit || 0) > 0).length / data.filter(t => t.status === 'CLOSED').length) * 100 || 0).toFixed(3)}%</p>
+          <h2>Trade Summary</h2>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-title">Total Trades</div>
+              <div class="metric-value">${closedTrades.length}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Winning Trades</div>
+              <div class="metric-value">${winningTrades.length} (${winRate.toFixed(2)}%)</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Losing Trades</div>
+              <div class="metric-value">${losingTrades.length} (${(100 - winRate).toFixed(2)}%)</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Break Even Trades</div>
+              <div class="metric-value">${breakEvenTrades.length}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Total Profit/Loss</div>
+              <div class="metric-value" style="color: ${totalProfit >= 0 ? 'green' : 'red'}">$${totalProfit.toFixed(3)}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Total Commission</div>
+              <div class="metric-value">$${totalCommission.toFixed(3)}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Expected Value</div>
+              <div class="metric-value" style="color: ${expectedValue >= 0 ? 'green' : 'red'}">$${expectedValue.toFixed(3)}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Sharpe Ratio</div>
+              <div class="metric-value">${sharpeRatio.toFixed(3)}</div>
+            </div>
+          </div>
         </div>
         <table>
           <thead>
@@ -203,9 +268,9 @@ const TradeTable = ({ data }: TradeTableProps) => {
               <th>Entry Price</th>
               <th>Exit Date</th>
               <th>Exit Price</th>
-              <th>Stop Loss</th>
               <th>Lot Size</th>
               <th>Commission</th>
+              <th>Result</th>
               <th>Profit/Loss</th>
               <th>Pips</th>
               <th>Status</th>
@@ -214,21 +279,24 @@ const TradeTable = ({ data }: TradeTableProps) => {
           <tbody>
     `;
     
-    // Add rows for each trade
+    // Add rows for each trade with coloring based on result
     data.forEach(trade => {
+      const result = trade.result || (trade.profit ? (trade.profit > 0 ? 'WIN' : trade.profit < 0 ? 'LOSS' : 'BREAK_EVEN') : '');
+      const rowClass = result === 'WIN' ? 'win' : result === 'LOSS' ? 'loss' : result === 'BREAK_EVEN' ? 'break-even' : '';
+      
       htmlContent += `
-        <tr>
+        <tr class="${rowClass}">
           <td>${trade.pair}</td>
           <td>${trade.type}</td>
           <td>${trade.entryDate ? new Date(trade.entryDate).toLocaleString() : '-'}</td>
           <td>${trade.entryPrice.toFixed(5)}</td>
           <td>${trade.exitDate ? new Date(trade.exitDate).toLocaleString() : '-'}</td>
           <td>${trade.exitPrice ? trade.exitPrice.toFixed(5) : '-'}</td>
-          <td>${trade.stopLoss ? trade.stopLoss.toFixed(5) : '-'}</td>
-          <td>${trade.lotSize.toFixed(3)}</td>
+          <td>${trade.lotSize.toFixed(2)}</td>
           <td>$${trade.commission.toFixed(3)}</td>
+          <td>${result}</td>
           <td class="${(trade.profit || 0) >= 0 ? 'profit' : 'loss'}">${trade.profit ? `$${trade.profit.toFixed(3)}` : '-'}</td>
-          <td>${trade.pips ? trade.pips.toFixed(3) : '-'}</td>
+          <td>${trade.pips ? trade.pips.toFixed(1) : '-'}</td>
           <td>${trade.status}</td>
         </tr>
       `;
@@ -339,17 +407,38 @@ const TradeTable = ({ data }: TradeTableProps) => {
       header: "Lot Size",
       cell: ({ row }) => {
         const lotSize = parseFloat(row.getValue("lotSize"));
-        return <div className="text-right">{lotSize.toFixed(3)}</div>;
+        return <div className="text-right">{lotSize.toFixed(2)}</div>;
       },
     },
     {
       accessorKey: "commission",
       header: "Commission",
       cell: ({ row }) => {
-        // Calculate commission as 7 * lot size
-        const lotSize = parseFloat(row.original.lotSize.toString());
-        const commission = lotSize * 7;
+        const commission = parseFloat(row.original.commission.toString());
         return <div className="text-right">${commission.toFixed(3)}</div>;
+      },
+    },
+    {
+      accessorKey: "result",
+      header: "Result",
+      cell: ({ row }) => {
+        const result = row.original.result || 
+                      (row.original.profit ? 
+                        (row.original.profit > 0 ? 'WIN' : 
+                         row.original.profit < 0 ? 'LOSS' : 'BREAK_EVEN') : 
+                        null);
+        
+        if (!result) return <div className="text-center">-</div>;
+        
+        return (
+          <Badge variant="outline" className={
+            result === 'WIN' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
+            result === 'LOSS' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
+            'bg-gray-100 text-gray-800 hover:bg-gray-100'
+          }>
+            {result === 'BREAK_EVEN' ? 'Break Even' : result}
+          </Badge>
+        );
       },
     },
     {
@@ -392,7 +481,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
         
         return (
           <div className={`text-right font-medium ${pips >= 0 ? "text-forex-profit" : "text-forex-loss"}`}>
-            {pips >= 0 ? `+${pips.toFixed(3)}` : pips.toFixed(3)}
+            {pips >= 0 ? `+${pips.toFixed(1)}` : pips.toFixed(1)}
           </div>
         );
       },
