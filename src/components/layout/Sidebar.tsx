@@ -1,17 +1,19 @@
 
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Table, 
-  BarChart, 
-  Upload, 
-  Settings, 
-  X
+  BookOpen, 
+  BarChart2, 
+  FileDown, 
+  ChevronLeft, 
+  ChevronRight,
+  Settings,
+  LogOut
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,97 +21,134 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
-  const isMobile = useIsMobile();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
-  const navItems = [
-    { 
-      title: 'Dashboard', 
-      path: '/', 
-      icon: <LayoutDashboard className="h-5 w-5" /> 
-    },
-    { 
-      title: 'Trade Log', 
-      path: '/trade-log', 
-      icon: <Table className="h-5 w-5" /> 
-    },
-    { 
-      title: 'Analytics', 
-      path: '/analytics', 
-      icon: <BarChart className="h-5 w-5" /> 
-    },
-    { 
-      title: 'Import Data', 
-      path: '/import', 
-      icon: <Upload className="h-5 w-5" /> 
-    },
-    { 
-      title: 'Settings', 
-      path: '/settings', 
-      icon: <Settings className="h-5 w-5" /> 
-    }
-  ];
+  // Check if the current route matches
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
 
+  const handleLogout = () => {
+    // Remove auth from localStorage
+    localStorage.removeItem('forex_tracker_auth');
+    
+    toast({
+      title: 'Logged out successfully',
+      description: 'You have been logged out of ForexTracker.',
+    });
+    
+    // Redirect to login page
+    navigate('/');
+  };
+  
   return (
     <div 
       className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-forex-primary text-white transform transition-transform duration-300 ease-in-out",
-        isMobile && !isOpen && "-translate-x-full",
-        !isMobile && !isOpen && "w-20"
+        "h-screen fixed left-0 top-16 pb-4 transition-all duration-300 z-20",
+        isOpen ? "w-64" : "w-20"
       )}
     >
-      <div className="flex items-center justify-between h-16 px-4 border-b border-forex-secondary">
-        <h2 className={cn(
-          "font-bold transition-opacity",
-          !isOpen && !isMobile && "opacity-0"
-        )}>
-          Trading Journal
-        </h2>
-        {isMobile && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleSidebar}
-            className="text-white hover:bg-forex-secondary"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      <nav className="flex flex-col p-2 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => cn(
-              "flex items-center p-2 rounded-md transition-colors",
-              isActive ? "bg-forex-accent text-white" : "text-white/80 hover:bg-forex-secondary hover:text-white",
-              !isOpen && !isMobile && "justify-center"
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-10"
+          onClick={toggleSidebar}
+        />
+      )}
+      
+      <div className="relative flex flex-col h-full overflow-y-auto border-r bg-card shadow-sm z-20">
+        <div className="px-3 py-3 bg-muted/50 flex items-center">
+          <div>
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+              {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+              <span className="sr-only">Toggle Sidebar</span>
+            </Button>
+          </div>
+          {isOpen && (
+            <div className="ml-3 text-sm font-medium">
+              ForexTracker
+            </div>
+          )}
+        </div>
+        
+        <div className="flex flex-col flex-1 py-4">
+          <Link 
+            to="/dashboard" 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 mx-3 rounded-md mb-1 transition-all",
+              isActive("/dashboard") 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-secondary text-muted-foreground"
             )}
           >
-            {item.icon}
-            <span className={cn(
-              "ml-3 transition-opacity duration-200",
-              (!isOpen && !isMobile) && "opacity-0 w-0 overflow-hidden"
-            )}>
-              {item.title}
-            </span>
-          </NavLink>
-        ))}
-      </nav>
+            <LayoutDashboard size={isOpen ? 16 : 20} />
+            {isOpen && <span>Dashboard</span>}
+          </Link>
+          
+          <Link 
+            to="/trade-log" 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 mx-3 rounded-md mb-1 transition-all",
+              isActive("/trade-log") 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-secondary text-muted-foreground"
+            )}
+          >
+            <BookOpen size={isOpen ? 16 : 20} />
+            {isOpen && <span>Trade Log</span>}
+          </Link>
+          
+          <Link 
+            to="/analytics" 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 mx-3 rounded-md mb-1 transition-all",
+              isActive("/analytics") 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-secondary text-muted-foreground"
+            )}
+          >
+            <BarChart2 size={isOpen ? 16 : 20} />
+            {isOpen && <span>Analytics</span>}
+          </Link>
+          
+          <Link 
+            to="/import" 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 mx-3 rounded-md mb-1 transition-all",
+              isActive("/import") 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-secondary text-muted-foreground"
+            )}
+          >
+            <FileDown size={isOpen ? 16 : 20} />
+            {isOpen && <span>Import</span>}
+          </Link>
+        </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <div className={cn(
-          "bg-forex-secondary rounded-md p-3 text-sm",
-          !isOpen && !isMobile && "hidden"
-        )}>
-          <p className="font-medium mb-2">Trading Stats</p>
-          <div className="grid grid-cols-2 gap-1 text-xs">
-            <div>Win Rate:</div>
-            <div className="text-right text-forex-accent font-medium">62.5%</div>
-            <div>Profit:</div>
-            <div className="text-right text-forex-profit font-medium">$430</div>
-          </div>
+        <div className="px-3 mt-auto">
+          <Link 
+            to="/settings" 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md mb-2 transition-all",
+              isActive("/settings") 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-secondary text-muted-foreground"
+            )}
+          >
+            <Settings size={isOpen ? 16 : 20} />
+            {isOpen && <span>Settings</span>}
+          </Link>
+          
+          <Button 
+            variant="ghost" 
+            className="w-full flex items-center gap-3 px-3 py-2 justify-start text-muted-foreground hover:bg-secondary hover:text-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut size={isOpen ? 16 : 20} />
+            {isOpen && <span>Logout</span>}
+          </Button>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, LineChart } from 'lucide-react';
 import EquityCurve from '@/components/analytics/EquityCurve';
 import WinRateChart from '@/components/analytics/WinRateChart';
 import PairPerformance from '@/components/analytics/PairPerformance';
@@ -25,7 +25,10 @@ import {
   YAxis, 
   Tooltip, 
   CartesianGrid,
-  Cell
+  Cell,
+  AreaChart,
+  Area,
+  Legend
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -35,6 +38,7 @@ const OverviewTab = () => {
   const [selectedTimePeriod, setSelectedTimePeriod] = useState('1M');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [chartStyle, setChartStyle] = useState<'area' | 'line' | 'bar'>('area');
   const { toast } = useToast();
   
   // Fetch trades from Supabase
@@ -63,8 +67,8 @@ const OverviewTab = () => {
             stopLoss: trade.stop_loss,
             takeProfit: trade.take_profit,
             lotSize: trade.lot_size,
-            commission: trade.commission,
-            swap: trade.swap,
+            commission: trade.lot_size * 7, // Calculate commission as 7 * lot size
+            swap: trade.swap || 0,
             profit: trade.profit,
             pips: trade.pips,
             riskRewardRatio: trade.risk_reward_ratio,
@@ -134,7 +138,9 @@ const OverviewTab = () => {
     // Calculate win rate
     const closedTrades = trades.filter(trade => trade.status === 'CLOSED');
     const winningTrades = closedTrades.filter(trade => (trade.profit || 0) > 0);
+    const losingTrades = closedTrades.filter(trade => (trade.profit || 0) < 0);
     const winRate = closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0;
+    const lossRate = 100 - winRate;
     
     // Calculate profit factor
     const totalProfit = winningTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
@@ -150,6 +156,26 @@ const OverviewTab = () => {
     
     // Calculate net profit
     const netProfit = closedTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
+    
+    // Calculate average win and average loss for expected value
+    const avgWin = winningTrades.length > 0
+      ? winningTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0) / winningTrades.length
+      : 0;
+      
+    const avgLoss = losingTrades.length > 0
+      ? Math.abs(losingTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0) / losingTrades.length)
+      : 0;
+    
+    // Calculate expected value: (Win Rate * Avg Win) - (Loss Rate * Avg Loss)
+    const expectedValue = ((winRate / 100) * avgWin) - ((lossRate / 100) * avgLoss);
+    
+    // Calculate Sharpe Ratio (assuming risk-free rate of 0 for simplicity)
+    // Sharpe = (Return - Risk Free Rate) / Standard Deviation
+    const profitValues = closedTrades.map(trade => trade.profit || 0);
+    const mean = profitValues.reduce((sum, val) => sum + val, 0) / profitValues.length;
+    const variance = profitValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / profitValues.length;
+    const stdDev = Math.sqrt(variance);
+    const sharpeRatio = stdDev > 0 ? mean / stdDev : 0;
     
     return [
       {
@@ -175,6 +201,18 @@ const OverviewTab = () => {
         value: `$${netProfit.toFixed(3)}`,
         change: 0,
         isPositive: netProfit >= 0
+      },
+      {
+        name: "Expected Value",
+        value: `$${expectedValue.toFixed(3)}`,
+        change: 0,
+        isPositive: expectedValue >= 0
+      },
+      {
+        name: "Sharpe Ratio",
+        value: sharpeRatio.toFixed(3),
+        change: 0,
+        isPositive: sharpeRatio >= 0
       }
     ];
   }, [trades]);
@@ -208,10 +246,24 @@ const OverviewTab = () => {
           </Select>
         </div>
         
-        <Button variant="outline">
-          <ChevronDown className="h-4 w-4 mr-2" />
-          Filter Options
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setChartStyle('area')} className={chartStyle === 'area' ? 'bg-gray-100' : ''}>
+            <LineChart className="h-4 w-4 mr-2" />
+            Area
+          </Button>
+          <Button variant="outline" onClick={() => setChartStyle('line')} className={chartStyle === 'line' ? 'bg-gray-100' : ''}>
+            <LineChart className="h-4 w-4 mr-2" />
+            Line
+          </Button>
+          <Button variant="outline" onClick={() => setChartStyle('bar')} className={chartStyle === 'bar' ? 'bg-gray-100' : ''}>
+            <LineChart className="h-4 w-4 mr-2" />
+            Bar
+          </Button>
+          <Button variant="outline">
+            <ChevronDown className="h-4 w-4 mr-2" />
+            Filter Options
+          </Button>
+        </div>
       </div>
       
       <PerformanceMetrics metrics={metrics} />
@@ -223,7 +275,7 @@ const OverviewTab = () => {
               <CardTitle className="text-lg">Equity Curve</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <EquityCurve trades={trades} />
+              <EquityCurve trades={trades} chartStyle={chartStyle} />
             </CardContent>
           </Card>
         </div>

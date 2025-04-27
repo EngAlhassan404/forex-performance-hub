@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown, ChevronDown, Edit, MoreHorizontal, Trash } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Edit, FileDown, MoreHorizontal, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -60,12 +60,6 @@ const TradeTable = ({ data }: TradeTableProps) => {
   // Function to handle editing a trade
   const handleEditTrade = (tradeId: string) => {
     navigate(`/edit-trade/${tradeId}`);
-    
-    // For now, just show a toast message
-    toast({
-      title: "Edit trade",
-      description: `Editing trade: ${tradeId}`,
-    });
   };
   
   // Function to delete a trade
@@ -93,6 +87,183 @@ const TradeTable = ({ data }: TradeTableProps) => {
         description: error.message || "Failed to delete the trade",
       });
     }
+  };
+  
+  // Function to export trades as CSV
+  const exportAsCSV = () => {
+    if (data.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Add some trades before exporting.",
+      });
+      return;
+    }
+    
+    // Create CSV header
+    const headers = [
+      "Pair", "Type", "Entry Date", "Entry Price", "Exit Date", "Exit Price", 
+      "Stop Loss", "Take Profit", "Lot Size", "Commission", "Swap", "Profit", 
+      "Pips", "R:R Ratio", "Status", "Session", "Strategy", "Notes"
+    ];
+    
+    // Convert trade data to CSV rows
+    const csvRows = [
+      headers.join(','), // Header row
+      ...data.map(trade => [
+        trade.pair,
+        trade.type,
+        trade.entryDate ? new Date(trade.entryDate).toLocaleString() : '',
+        trade.entryPrice,
+        trade.exitDate ? new Date(trade.exitDate).toLocaleString() : '',
+        trade.exitPrice || '',
+        trade.stopLoss || '',
+        trade.takeProfit || '',
+        trade.lotSize,
+        trade.commission.toFixed(3),
+        trade.swap.toFixed(3),
+        trade.profit ? trade.profit.toFixed(3) : '',
+        trade.pips ? trade.pips.toFixed(3) : '',
+        trade.riskRewardRatio ? trade.riskRewardRatio.toFixed(3) : '',
+        trade.status,
+        trade.session || '',
+        trade.strategy || '',
+        `"${(trade.notes || '').replace(/"/g, '""')}"` // Escape quotes in notes
+      ].join(','))
+    ];
+    
+    // Create blob and download link
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Set link properties
+    link.setAttribute('href', url);
+    link.setAttribute('download', `trade-log-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    // Add to document, click and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export successful",
+      description: "Your trade log has been exported as CSV.",
+    });
+  };
+  
+  // Function to export trades as HTML
+  const exportAsHTML = () => {
+    if (data.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Add some trades before exporting.",
+      });
+      return;
+    }
+    
+    // Create HTML content
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ForexTracker Trade Log</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+          h1 { color: #2C74B3; text-align: center; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background-color: #f0f0f0; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
+          td { padding: 8px; border-bottom: 1px solid #ddd; }
+          .profit { color: green; }
+          .loss { color: red; }
+          .timestamp { text-align: right; color: #777; font-size: 0.9em; margin: 30px 0 10px; }
+          .summary { background: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>ForexTracker Trade Log</h1>
+        <div class="summary">
+          <strong>Trade Summary</strong>
+          <p>Total Trades: ${data.length}</p>
+          <p>Winning Trades: ${data.filter(t => (t.profit || 0) > 0).length}</p>
+          <p>Losing Trades: ${data.filter(t => (t.profit || 0) < 0).length}</p>
+          <p>Win Rate: ${((data.filter(t => (t.profit || 0) > 0).length / data.filter(t => t.status === 'CLOSED').length) * 100 || 0).toFixed(3)}%</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Type</th>
+              <th>Entry Date</th>
+              <th>Entry Price</th>
+              <th>Exit Date</th>
+              <th>Exit Price</th>
+              <th>Stop Loss</th>
+              <th>Lot Size</th>
+              <th>Commission</th>
+              <th>Profit/Loss</th>
+              <th>Pips</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    // Add rows for each trade
+    data.forEach(trade => {
+      htmlContent += `
+        <tr>
+          <td>${trade.pair}</td>
+          <td>${trade.type}</td>
+          <td>${trade.entryDate ? new Date(trade.entryDate).toLocaleString() : '-'}</td>
+          <td>${trade.entryPrice.toFixed(5)}</td>
+          <td>${trade.exitDate ? new Date(trade.exitDate).toLocaleString() : '-'}</td>
+          <td>${trade.exitPrice ? trade.exitPrice.toFixed(5) : '-'}</td>
+          <td>${trade.stopLoss ? trade.stopLoss.toFixed(5) : '-'}</td>
+          <td>${trade.lotSize.toFixed(3)}</td>
+          <td>$${trade.commission.toFixed(3)}</td>
+          <td class="${(trade.profit || 0) >= 0 ? 'profit' : 'loss'}">${trade.profit ? `$${trade.profit.toFixed(3)}` : '-'}</td>
+          <td>${trade.pips ? trade.pips.toFixed(3) : '-'}</td>
+          <td>${trade.status}</td>
+        </tr>
+      `;
+    });
+    
+    // Close HTML structure
+    htmlContent += `
+          </tbody>
+        </table>
+        <div class="timestamp">
+          Generated on: ${new Date().toLocaleString()}
+        </div>
+      </body>
+      </html>
+    `;
+    
+    // Create blob and download link
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Set link properties
+    link.setAttribute('href', url);
+    link.setAttribute('download', `trade-log-${new Date().toISOString().split('T')[0]}.html`);
+    link.style.visibility = 'hidden';
+    
+    // Add to document, click and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export successful",
+      description: "Your trade log has been exported as HTML.",
+    });
   };
   
   const columns: ColumnDef<Trade>[] = [
@@ -156,19 +327,29 @@ const TradeTable = ({ data }: TradeTableProps) => {
       },
     },
     {
-      accessorKey: "exitDate",
-      header: "Exit Date",
-      cell: ({ row }) => {
-        const date = row.getValue("exitDate");
-        return date ? <div>{new Date(date as string).toLocaleString()}</div> : "-";
-      },
-    },
-    {
       accessorKey: "exitPrice",
       header: "Exit Price",
       cell: ({ row }) => {
         const price = row.getValue("exitPrice");
         return price ? <div className="text-right">{parseFloat(price as string).toFixed(5)}</div> : "-";
+      },
+    },
+    {
+      accessorKey: "lotSize",
+      header: "Lot Size",
+      cell: ({ row }) => {
+        const lotSize = parseFloat(row.getValue("lotSize"));
+        return <div className="text-right">{lotSize.toFixed(3)}</div>;
+      },
+    },
+    {
+      accessorKey: "commission",
+      header: "Commission",
+      cell: ({ row }) => {
+        // Calculate commission as 7 * lot size
+        const lotSize = parseFloat(row.original.lotSize.toString());
+        const commission = lotSize * 7;
+        return <div className="text-right">${commission.toFixed(3)}</div>;
       },
     },
     {
@@ -211,7 +392,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
         
         return (
           <div className={`text-right font-medium ${pips >= 0 ? "text-forex-profit" : "text-forex-loss"}`}>
-            {pips >= 0 ? `+${pips.toFixed(1)}` : pips.toFixed(1)}
+            {pips >= 0 ? `+${pips.toFixed(3)}` : pips.toFixed(3)}
           </div>
         );
       },
@@ -286,7 +467,7 @@ const TradeTable = ({ data }: TradeTableProps) => {
 
   return (
     <div>
-      <div className="flex items-center py-4">
+      <div className="flex items-center justify-between py-4">
         <Input
           placeholder="Filter by currency pair..."
           value={(table.getColumn("pair")?.getFilterValue() as string) ?? ""}
@@ -295,29 +476,48 @@ const TradeTable = ({ data }: TradeTableProps) => {
           }
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table.getAllColumns().map((column) => {
-              return (
-                <DropdownMenuItem key={column.id} className="capitalize">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={column.getIsVisible()}
-                      onChange={(e) => column.toggleVisibility(e.target.checked)}
-                    />
-                    <span>{column.id}</span>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileDown className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportAsCSV} className="cursor-pointer">
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportAsHTML} className="cursor-pointer">
+                Export as HTML
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table.getAllColumns().map((column) => {
+                return (
+                  <DropdownMenuItem key={column.id} className="capitalize">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={column.getIsVisible()}
+                        onChange={(e) => column.toggleVisibility(e.target.checked)}
+                      />
+                      <span>{column.id}</span>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>

@@ -11,7 +11,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -26,13 +25,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-// Calculate total profit from trades
+// Calculate total profit from trades WITHOUT deducting commission
 const calculateTotalProfit = (trades: Trade[]) => {
   return trades
     .filter(trade => trade.status === 'CLOSED')
     .reduce((total, trade) => {
-      // Subtract commission from profit
-      const tradeProfit = (trade.profit || 0) - (trade.commission || 0) - (trade.swap || 0);
+      // No longer subtract commission from profit
+      const tradeProfit = (trade.profit || 0) - (trade.swap || 0);
       return total + tradeProfit;
     }, 0);
 };
@@ -49,10 +48,10 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     return savedBalance ? parseFloat(savedBalance) : 0;
   });
 
-  // Calculate total profit with commission subtracted
+  // Calculate total profit WITHOUT commission subtracted
   const totalProfit = calculateTotalProfit(trades);
   
-  // Calculate total commissions
+  // Calculate total commissions separately to display
   const totalCommissions = trades
     .filter(trade => trade.status === 'CLOSED')
     .reduce((total, trade) => total + (trade.commission || 0), 0);
@@ -65,7 +64,7 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     ? (totalProfit / initialBalance) * 100 
     : 0;
   
-  // Calculate max drawdown - we'll implement a proper calculation
+  // Calculate max drawdown with improved methodology
   const calculateMaxDrawdown = (trades: Trade[]) => {
     if (trades.length === 0) return 0;
     
@@ -80,8 +79,8 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
     
     // Iterate through trades chronologically
     closedTrades.forEach(trade => {
-      // Update current balance
-      currentBalance += (trade.profit || 0) - (trade.commission || 0) - (trade.swap || 0);
+      // Update current balance without deducting commission
+      currentBalance += (trade.profit || 0) - (trade.swap || 0);
       
       // Update peak if we have a new high
       if (currentBalance > peak) {
@@ -101,6 +100,9 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
   };
   
   const maxDrawdown = calculateMaxDrawdown(trades);
+
+  // Calculate recovery factor (Net Profit / Maximum Drawdown)
+  const recoveryFactor = maxDrawdown > 0 ? totalProfit / (maxDrawdown / 100 * peak) : 0;
 
   // Update initial balance when adding funds
   const handleAddFunds = () => {
@@ -201,7 +203,7 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
                 <p className="text-sm font-medium text-forex-loss">
                   ${totalCommissions.toFixed(3)} 
                   {initialBalance > 0 && (
-                    <span>({((totalCommissions / initialBalance) * 100).toFixed(3)}%)</span>
+                    <span> ({((totalCommissions / initialBalance) * 100).toFixed(3)}%)</span>
                   )}
                 </p>
               </div>
@@ -209,6 +211,12 @@ const BalanceCard = ({ trades }: { trades: Trade[] }) => {
                 <p className="text-xs text-muted-foreground">Max Drawdown</p>
                 <p className="text-sm font-medium text-forex-loss">
                   {maxDrawdown.toFixed(3)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Recovery Factor</p>
+                <p className="text-sm font-medium">
+                  {recoveryFactor.toFixed(3)}
                 </p>
               </div>
             </>

@@ -20,6 +20,9 @@ const Auth = () => {
     
     // Check credentials
     if (username === 'AlhassanAli' && password === '1234') {
+      // Store login state in localStorage to prevent re-login
+      localStorage.setItem('forex_tracker_auth', 'true');
+      
       toast({
         title: 'Login successful',
         description: 'Welcome to your trading dashboard.',
@@ -41,13 +44,13 @@ const Auth = () => {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-cover bg-center" 
       style={{ 
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')` 
+        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')` 
       }}
     >
       <div className="mx-auto w-full max-w-md p-4">
-        <Card className="bg-white/90 backdrop-blur-sm">
+        <Card className="bg-white shadow-lg">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">ForexTracker</CardTitle>
+            <CardTitle className="text-2xl font-bold text-forex-primary">ForexTracker</CardTitle>
             <CardDescription>
               Enter your credentials to access your dashboard
             </CardDescription>
@@ -63,6 +66,7 @@ const Auth = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -80,6 +84,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
+                  className="w-full"
                 />
               </div>
               <Button 
