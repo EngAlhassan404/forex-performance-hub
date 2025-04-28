@@ -5,6 +5,7 @@ export const calculateTotalProfit = (trades: Trade[]) => {
   return trades
     .filter(trade => trade.status === 'CLOSED')
     .reduce((total, trade) => {
+      // Remove commission deduction, only subtract swap
       const tradeProfit = (trade.profit || 0) - (trade.swap || 0);
       return total + tradeProfit;
     }, 0);
@@ -23,6 +24,7 @@ export const calculateMaxDrawdown = (trades: Trade[], initialBalance: number): {
   let currentBalance = initialBalance;
   
   closedTrades.forEach(trade => {
+    // Remove commission deduction from balance calculation
     currentBalance += (trade.profit || 0) - (trade.swap || 0);
     
     if (currentBalance > peak) {
@@ -38,4 +40,3 @@ export const calculateMaxDrawdown = (trades: Trade[], initialBalance: number): {
   
   return { maxDrawdown, peak };
 };
-

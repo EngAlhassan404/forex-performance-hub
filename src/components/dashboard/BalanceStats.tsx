@@ -20,26 +20,27 @@ const BalanceStats = ({
   maxDrawdown,
   recoveryFactor
 }: BalanceStatsProps) => {
+  // Remove commission deduction from profit percentage calculation
   const profitPercentage = initialBalance > 0 
-    ? ((totalProfit - totalCommissions) / initialBalance) * 100 
+    ? (totalProfit / initialBalance) * 100 
     : 0;
 
   return (
     <div>
       <div className="text-3xl font-bold tracking-tight">
-        ${(initialBalance + totalProfit - totalCommissions).toFixed(3)}
+        ${(initialBalance + totalProfit).toFixed(3)}
       </div>
       
       {trades.length > 0 && (
         <div className="flex items-center mt-2">
-          <div className={`flex items-center ${(totalProfit - totalCommissions) >= 0 ? 'text-forex-profit' : 'text-forex-loss'}`}>
-            {(totalProfit - totalCommissions) >= 0 ? (
+          <div className={`flex items-center ${totalProfit >= 0 ? 'text-forex-profit' : 'text-forex-loss'}`}>
+            {totalProfit >= 0 ? (
               <ArrowUpRight className="h-4 w-4 mr-1" />
             ) : (
               <ArrowDownRight className="h-4 w-4 mr-1" />
             )}
             <span className="text-sm font-medium">
-              ${Math.abs(totalProfit - totalCommissions).toFixed(3)} ({profitPercentage.toFixed(3)}%)
+              ${Math.abs(totalProfit).toFixed(3)} ({profitPercentage.toFixed(3)}%)
             </span>
           </div>
         </div>
@@ -54,8 +55,8 @@ const BalanceStats = ({
           <>
             <div>
               <p className="text-xs text-muted-foreground">Net Profit/Loss</p>
-              <p className={`text-sm font-medium ${(totalProfit - totalCommissions) >= 0 ? 'text-forex-profit' : 'text-forex-loss'}`}>
-                ${(totalProfit - totalCommissions).toFixed(3)}
+              <p className={`text-sm font-medium ${totalProfit >= 0 ? 'text-forex-profit' : 'text-forex-loss'}`}>
+                ${totalProfit.toFixed(3)}
               </p>
             </div>
             <div>
