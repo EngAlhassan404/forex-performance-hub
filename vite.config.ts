@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'VITE_APP_VERSION': JSON.stringify(new Date().getTime())
+    // Using a simple number for cache busting to avoid encoding issues
+    'VITE_APP_VERSION': JSON.stringify(Math.floor(Date.now() / 1000))
   }
 }));
