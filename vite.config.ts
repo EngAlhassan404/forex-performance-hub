@@ -19,8 +19,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  define: {
-    // Using a simple number for cache busting to avoid encoding issues
-    'VITE_APP_VERSION': JSON.stringify(Math.floor(Date.now() / 1000))
-  }
 }));
+
