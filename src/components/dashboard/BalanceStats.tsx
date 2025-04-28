@@ -20,15 +20,16 @@ const BalanceStats = ({
   maxDrawdown,
   recoveryFactor
 }: BalanceStatsProps) => {
-  // Remove commission deduction from profit percentage calculation
-  const profitPercentage = initialBalance > 0 
-    ? (totalProfit / initialBalance) * 100 
+  // Calculate profit percentage based on commission-adjusted initial balance
+  const adjustedInitialBalance = initialBalance - totalCommissions;
+  const profitPercentage = adjustedInitialBalance > 0 
+    ? (totalProfit / adjustedInitialBalance) * 100 
     : 0;
 
   return (
     <div>
       <div className="text-3xl font-bold tracking-tight">
-        ${(initialBalance + totalProfit).toFixed(3)}
+        ${(adjustedInitialBalance + totalProfit).toFixed(3)}
       </div>
       
       {trades.length > 0 && (
@@ -48,8 +49,8 @@ const BalanceStats = ({
       
       <div className="grid grid-cols-2 gap-4 mt-4">
         <div>
-          <p className="text-xs text-muted-foreground">Initial Capital</p>
-          <p className="text-sm font-medium">${initialBalance.toFixed(3)}</p>
+          <p className="text-xs text-muted-foreground">Initial Capital (After Commissions)</p>
+          <p className="text-sm font-medium">${adjustedInitialBalance.toFixed(3)}</p>
         </div>
         {trades.length > 0 && (
           <>
