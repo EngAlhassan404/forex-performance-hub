@@ -13,24 +13,57 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Trade } from '@/lib/types';
 
 const PatternRecognitionTab = () => {
-  // Time-based performance data
-  const timeData = [
-    { hour: '00:00-04:00', profit: 120, trades: 5 },
-    { hour: '04:00-08:00', profit: 180, trades: 8 },
-    { hour: '08:00-12:00', profit: -50, trades: 12 },
-    { hour: '12:00-16:00', profit: 95, trades: 15 },
-    { hour: '16:00-20:00', profit: 200, trades: 10 },
-    { hour: '20:00-24:00', profit: -30, trades: 6 },
-  ];
+  const { data: trades = [] } = useQuery({
+    queryKey: ['trades'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trades')
+        .select('*')
+        .order('entry_date', { ascending: false });
 
-  // Session data for pie chart
-  const sessionData = [
-    { name: 'Asian', value: 25 },
-    { name: 'European', value: 45 },
-    { name: 'US', value: 30 },
-  ];
+      if (error) throw error;
+      return data as Trade[];
+    }
+  });
+
+  // Process time-based performance data from actual trades
+  const timeData = Array(6).fill(0).map((_, index) => {
+    const startHour = index * 4;
+    const endHour = startHour + 4;
+    
+    const periodTrades = trades.filter(trade => {
+      const hour = new Date(trade.entryDate).getUTCHours();
+      return hour >= startHour && hour < endHour;
+    });
+    
+    const profit = periodTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
+    
+    return {
+      hour: `${String(startHour).padStart(2, '0')}:00-${String(endHour).padStart(2, '0')}:00`,
+      profit: parseFloat(profit.toFixed(2)),
+      trades: periodTrades.length
+    };
+  });
+
+  // Calculate session data from actual trades
+  const sessionData = trades.reduce((acc: { [key: string]: number }, trade) => {
+    if (trade.session) {
+      acc[trade.session] = (acc[trade.session] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const sessionChartData = Object.entries(sessionData).map(([name, value]) => ({
+    name,
+    value
+  }));
+
+  const COLORS = ['#FFBB28', '#00C49F', '#0088FE', '#FF8042'];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -68,7 +101,7 @@ const PatternRecognitionTab = () => {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={sessionData}
+                data={sessionChartData}
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
@@ -76,9 +109,9 @@ const PatternRecognitionTab = () => {
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
-                <Cell fill="#FFBB28" />
-                <Cell fill="#00C49F" />
-                <Cell fill="#0088FE" />
+                {sessionChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
               </Pie>
               <Tooltip />
             </PieChart>
@@ -90,3 +123,4 @@ const PatternRecognitionTab = () => {
 };
 
 export default PatternRecognitionTab;
+

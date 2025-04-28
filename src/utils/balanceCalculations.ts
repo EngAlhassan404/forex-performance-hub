@@ -1,4 +1,6 @@
 
+import { Trade } from '@/lib/types';
+
 export const calculateTotalProfit = (trades: Trade[]) => {
   return trades
     .filter(trade => trade.status === 'CLOSED')
@@ -36,3 +38,4 @@ export const calculateMaxDrawdown = (trades: Trade[], initialBalance: number): {
   
   return { maxDrawdown, peak };
 };
+
