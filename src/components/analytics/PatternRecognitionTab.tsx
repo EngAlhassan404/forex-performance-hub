@@ -27,7 +27,39 @@ const PatternRecognitionTab = () => {
         .order('entry_date', { ascending: false });
 
       if (error) throw error;
-      return data as Trade[];
+      
+      // Map Supabase data to our Trade type
+      return (data || []).map(trade => ({
+        id: trade.id,
+        pair: trade.pair,
+        type: trade.type as 'BUY' | 'SELL' | 'NEUTRAL',
+        entryDate: trade.entry_date,
+        entryPrice: trade.entry_price,
+        exitDate: trade.exit_date,
+        exitPrice: trade.exit_price,
+        stopLoss: trade.stop_loss,
+        takeProfit: trade.take_profit,
+        lotSize: trade.lot_size,
+        commission: trade.commission || 0,
+        swap: trade.swap || 0,
+        profit: trade.profit,
+        pips: trade.pips,
+        riskRewardRatio: trade.risk_reward_ratio,
+        notes: trade.notes || '',
+        tags: trade.tags || [],
+        strategy: trade.strategy || '',
+        status: trade.status as 'OPEN' | 'CLOSED',
+        session: trade.session as any || null,
+        capitalGrowth: trade.capital_growth,
+        riskPercentage: trade.risk_percentage,
+        result: trade.profit !== null 
+          ? trade.profit > 0 
+            ? 'WIN' 
+            : trade.profit < 0 
+              ? 'LOSS' 
+              : 'BREAK_EVEN'
+          : null
+      })) as Trade[];
     }
   });
 
@@ -123,4 +155,3 @@ const PatternRecognitionTab = () => {
 };
 
 export default PatternRecognitionTab;
-
