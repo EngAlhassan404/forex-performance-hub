@@ -15,7 +15,12 @@ export const calculateMaxDrawdown = (trades: Trade[], initialBalance: number): {
   if (trades.length === 0) return { maxDrawdown: 0, peak: 0 };
   
   const closedTrades = trades.filter(trade => trade.status === 'CLOSED')
-    .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
+    .sort((a, b) => {
+      // Ensure we're working with valid date objects by using a safe comparison
+      const dateA = a.entryDate ? new Date(a.entryDate).getTime() : 0;
+      const dateB = b.entryDate ? new Date(b.entryDate).getTime() : 0;
+      return dateA - dateB;
+    });
     
   if (closedTrades.length === 0) return { maxDrawdown: 0, peak: 0 };
   
@@ -30,13 +35,18 @@ export const calculateMaxDrawdown = (trades: Trade[], initialBalance: number): {
   let currentBalance = adjustedInitialBalance;
   
   closedTrades.forEach(trade => {
+    // Ensure values are numbers by using || 0 for null/undefined values
+    const profit = Number(trade.profit || 0);
+    const swap = Number(trade.swap || 0);
+    
     // Only include trade profit and swap in balance calculation
-    currentBalance += (trade.profit || 0) - (trade.swap || 0);
+    currentBalance += profit - swap;
     
     if (currentBalance > peak) {
       peak = currentBalance;
     }
     
+    // Prevent division by zero
     const drawdown = peak > 0 ? ((peak - currentBalance) / peak) * 100 : 0;
     
     if (drawdown > maxDrawdown) {
